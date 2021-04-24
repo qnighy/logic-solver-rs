@@ -2,9 +2,26 @@ use std::collections::HashMap;
 
 use crate::prop::{Id, IdGen, Prop};
 
+/// iCNF (implicational CNF), a modified version of CNF for intuitionistic logic.
+///
+/// Traditional CNF can be seen as the following sequent:
+///
+/// ```text
+/// (a \/ ~b), (b \/ ~c), (c \/ ~d \/ e) |- false
+/// ```
+///
+/// In this interpretation, CNF-SAT's goal is to **refute** the sequent.
+///
+/// We extend the "CNF" above in the following ways:
+///
+/// - Negative literals are treated differently. Instead of `a \/ b \/ ~c \/ ~d`, we use `c /\ d -> a \/ b` as a clause.
+///   Note that they're classically equivalent, but intuitionistically different.
+/// - There is a special type of clause in the form of `(a -> b) -> c`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Icnf {
+    /// Hypotheses
     pub ant: Vec<Clause>,
+    /// Goal
     pub suc: Id,
 }
 
@@ -69,8 +86,11 @@ impl Icnf {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Clause {
+    /// (p1 & p2 & ... & pn) -> q
     Conj(Vec<Id>, Id),
+    /// (p1 & p2 & ... & pn) -> (q1 | q2 | ... | qn)
     Disj(Vec<Id>, Vec<Id>),
+    /// (p -> q) -> r
     Impl(Id, Id, Id),
 }
 
