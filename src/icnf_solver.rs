@@ -61,7 +61,18 @@ fn solve_dfs(ant: &[Clause], goal: Id, truth: &TruthTable) -> bool {
                 }
             }
             Clause::Disj(lhs, rhs) => {
-                todo!();
+                // We only need Disj when all props in lhs are met.
+                if lhs.iter().any(|&hyp| !truth.get(hyp))
+                    || rhs.iter().any(|&option| truth.get(option))
+                {
+                    continue;
+                }
+                if rhs.iter().all(|&option| {
+                    let mut truth = truth.set_temp(option, true);
+                    solve_dfs(ant, goal, &mut truth)
+                }) {
+                    return true;
+                }
             }
         }
     }
@@ -233,5 +244,117 @@ mod tests {
             },
         );
         assert_eq!(provable, false);
+    }
+
+    #[test]
+    fn test_solve_icnf8() {
+        let mut idgen = IdGen::new();
+        let id1 = idgen.fresh();
+        let id2 = idgen.fresh();
+        let id3 = idgen.fresh();
+        let provable = solve_icnf(
+            &idgen,
+            &Icnf {
+                ant: vec![Clause::Disj(vec![id1], vec![]), Clause::Impl(id1, id2, id3)],
+                suc: id3,
+            },
+        );
+        assert_eq!(provable, true);
+    }
+
+    #[test]
+    fn test_solve_icnf9() {
+        let mut idgen = IdGen::new();
+        let id1 = idgen.fresh();
+        let id2 = idgen.fresh();
+        let provable = solve_icnf(
+            &idgen,
+            &Icnf {
+                ant: vec![Clause::Disj(vec![], vec![id1, id2])],
+                suc: id2,
+            },
+        );
+        assert_eq!(provable, false);
+    }
+
+    #[test]
+    fn test_solve_icnf10() {
+        let mut idgen = IdGen::new();
+        let id1 = idgen.fresh();
+        let provable = solve_icnf(
+            &idgen,
+            &Icnf {
+                ant: vec![Clause::Disj(vec![], vec![id1, id1])],
+                suc: id1,
+            },
+        );
+        assert_eq!(provable, true);
+    }
+
+    #[test]
+    fn test_solve_icnf11() {
+        let mut idgen = IdGen::new();
+        let id1 = idgen.fresh();
+        let id2 = idgen.fresh();
+        let id3 = idgen.fresh();
+        let provable = solve_icnf(
+            &idgen,
+            &Icnf {
+                ant: vec![
+                    Clause::Disj(vec![], vec![id1, id2]),
+                    Clause::Conj(vec![id2], id3),
+                    Clause::Conj(vec![id1], id3),
+                ],
+                suc: id3,
+            },
+        );
+        assert_eq!(provable, true);
+    }
+
+    #[test]
+    fn test_solve_icnf12() {
+        let mut idgen = IdGen::new();
+        let id1 = idgen.fresh();
+        let id2 = idgen.fresh();
+        let id3 = idgen.fresh();
+        let id4 = idgen.fresh();
+        let provable = solve_icnf(
+            &idgen,
+            &Icnf {
+                ant: vec![
+                    Clause::Impl(id1, id2, id3),
+                    Clause::Conj(vec![id1], id4),
+                    Clause::Conj(vec![id3], id4),
+                ],
+                suc: id4,
+            },
+        );
+        assert_eq!(provable, false);
+    }
+
+    #[test]
+    fn test_solve_icnf13() {
+        let mut idgen = IdGen::new();
+        let id1 = idgen.fresh();
+        let id2 = idgen.fresh();
+        let id3 = idgen.fresh();
+        let id4 = idgen.fresh();
+        let id5 = idgen.fresh();
+        let id6 = idgen.fresh();
+        let provable = solve_icnf(
+            &idgen,
+            &Icnf {
+                ant: vec![
+                    Clause::Disj(vec![id2], vec![]),
+                    Clause::Impl(id1, id2, id3),
+                    Clause::Conj(vec![id1], id4),
+                    Clause::Conj(vec![id3], id4),
+                    Clause::Conj(vec![id5, id4], id2),
+                    Clause::Impl(id5, id2, id6),
+                ],
+                suc: id6,
+            },
+        );
+        assert_eq!(provable, true);
     }
 }
