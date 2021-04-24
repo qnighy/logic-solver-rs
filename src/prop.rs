@@ -109,7 +109,7 @@ impl IdGen {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Id(usize);
+pub struct Id(pub(crate) usize);
 
 #[cfg(test)]
 mod tests {
