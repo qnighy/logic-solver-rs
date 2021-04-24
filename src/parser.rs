@@ -76,6 +76,11 @@ mod tests {
         assert_eq!(prop, Atom(S("foo23")))
     }
 
+    #[test]
+    fn test_atom3() {
+        parse_prop("foo23 ").unwrap_err();
+    }
+
     #[allow(non_snake_case)]
     fn S(s: &str) -> String {
         s.to_owned()
