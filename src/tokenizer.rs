@@ -1,19 +1,23 @@
-use crate::ast::Prop;
-use crate::tokenizer::ParseError;
+#[derive(Debug)]
+pub struct ParseError;
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Token {
+    Ident(String),
+}
 
 #[derive(Debug)]
-struct Parser<'a> {
+struct Tokenizer<'a> {
     source: &'a str,
     pos: usize,
 }
 
-impl<'a> Parser<'a> {
+impl<'a> Tokenizer<'a> {
     fn new(source: &'a str) -> Self {
         Self { source, pos: 0 }
     }
 
     fn parse_ident(&mut self) -> Result<String, ParseError> {
-        self.skip_spaces()?;
         let start = self.pos;
         let b = self.next_byte().ok_or_else(|| ParseError)?;
         if !b.is_ascii_alphabetic() {
@@ -31,9 +35,13 @@ impl<'a> Parser<'a> {
         Ok(self.source[start..end].to_owned())
     }
 
-    fn parse_prop(&mut self) -> Result<Prop, ParseError> {
+    fn parse_token(&mut self) -> Result<Option<Token>, ParseError> {
+        self.skip_spaces()?;
+        if self.pos == self.source.len() {
+            return Ok(None);
+        }
         let ident = self.parse_ident()?;
-        Ok(Prop::Atom(ident))
+        Ok(Some(Token::Ident(ident)))
     }
 
     fn skip_spaces(&mut self) -> Result<(), ParseError> {
@@ -47,24 +55,18 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
-    fn parse_eof(&mut self) -> Result<(), ParseError> {
-        self.skip_spaces()?;
-        if self.pos < self.source.len() {
-            return Err(ParseError);
-        }
-        Ok(())
-    }
-
     fn next_byte(&self) -> Option<u8> {
         self.source.as_bytes().get(self.pos).copied()
     }
 }
 
-pub fn parse_prop(s: &str) -> Result<Prop, ParseError> {
-    let mut parser = Parser::new(s);
-    let prop = parser.parse_prop()?;
-    parser.parse_eof()?;
-    Ok(prop)
+pub fn tokenize(s: &str) -> Result<Vec<Token>, ParseError> {
+    let mut tokenizer = Tokenizer::new(s);
+    let mut tokens = Vec::new();
+    while let Some(token) = tokenizer.parse_token()? {
+        tokens.push(token);
+    }
+    Ok(tokens)
 }
 
 #[cfg(test)]
@@ -73,31 +75,31 @@ mod tests {
 
     #[test]
     fn test_atom1() {
-        use Prop::*;
+        use Token::*;
 
-        let prop = parse_prop("A").unwrap();
-        assert_eq!(prop, Atom(S("A")))
+        let prop = tokenize("A").unwrap();
+        assert_eq!(prop, vec![Ident(S("A"))]);
     }
 
     #[test]
     fn test_atom2() {
-        use Prop::*;
+        use Token::*;
 
-        let prop = parse_prop("foo23").unwrap();
-        assert_eq!(prop, Atom(S("foo23")))
+        let prop = tokenize("foo23").unwrap();
+        assert_eq!(prop, vec![Ident(S("foo23"))]);
     }
 
     #[test]
     fn test_atom3() {
-        parse_prop("foo23+").unwrap_err();
+        tokenize("foo23+").unwrap_err();
     }
 
     #[test]
     fn test_atom4() {
-        use Prop::*;
+        use Token::*;
 
-        let prop = parse_prop("\nfoo23 ").unwrap();
-        assert_eq!(prop, Atom(S("foo23")))
+        let prop = tokenize("\nfoo23 ").unwrap();
+        assert_eq!(prop, vec![Ident(S("foo23"))])
     }
 
     #[allow(non_snake_case)]
