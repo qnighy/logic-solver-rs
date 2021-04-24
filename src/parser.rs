@@ -18,6 +18,7 @@ impl Parser {
                 self.pos += 1;
                 Ok(Prop::Atom(ident.clone()))
             }
+            Some(&Token::Conj) => Err(ParseError),
             None => Err(ParseError),
         }
     }

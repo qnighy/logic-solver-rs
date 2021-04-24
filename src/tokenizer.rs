@@ -4,6 +4,7 @@ pub struct ParseError;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Token {
     Ident(String),
+    Conj,
 }
 
 #[derive(Debug)]
@@ -37,11 +38,20 @@ impl<'a> Tokenizer<'a> {
 
     fn parse_token(&mut self) -> Result<Option<Token>, ParseError> {
         self.skip_spaces()?;
-        if self.pos == self.source.len() {
+        let next = if let Some(next) = self.peek() {
+            next
+        } else {
             return Ok(None);
+        };
+        if next.is_ascii_alphabetic() {
+            let ident = self.parse_ident()?;
+            Ok(Some(Token::Ident(ident)))
+        } else if next == '∧' {
+            self.bump();
+            Ok(Some(Token::Conj))
+        } else {
+            Err(ParseError)
         }
-        let ident = self.parse_ident()?;
-        Ok(Some(Token::Ident(ident)))
     }
 
     fn skip_spaces(&mut self) -> Result<(), ParseError> {
@@ -106,7 +116,23 @@ mod tests {
         use Token::*;
 
         let prop = tokenize("\nfoo23 ").unwrap();
-        assert_eq!(prop, vec![Ident(S("foo23"))])
+        assert_eq!(prop, vec![Ident(S("foo23"))]);
+    }
+
+    #[test]
+    fn test_conj1() {
+        use Token::*;
+
+        let prop = tokenize("∧").unwrap();
+        assert_eq!(prop, vec![Conj]);
+    }
+
+    #[test]
+    fn test_conj2() {
+        use Token::*;
+
+        let prop = tokenize("A ∧ B").unwrap();
+        assert_eq!(prop, vec![Ident(S("A")), Conj, Ident(S("B"))]);
     }
 
     #[allow(non_snake_case)]
