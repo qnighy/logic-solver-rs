@@ -1,67 +1,38 @@
 use crate::ast::Prop;
-use crate::tokenizer::ParseError;
+use crate::tokenizer::{tokenize, ParseError, Token};
 
 #[derive(Debug)]
-struct Parser<'a> {
-    source: &'a str,
+struct Parser {
+    tokens: Vec<Token>,
     pos: usize,
 }
 
-impl<'a> Parser<'a> {
-    fn new(source: &'a str) -> Self {
-        Self { source, pos: 0 }
-    }
-
-    fn parse_ident(&mut self) -> Result<String, ParseError> {
-        self.skip_spaces()?;
-        let start = self.pos;
-        let b = self.next_byte().ok_or_else(|| ParseError)?;
-        if !b.is_ascii_alphabetic() {
-            return Err(ParseError);
-        }
-        self.pos += 1;
-        while self
-            .next_byte()
-            .map(|b| b.is_ascii_alphanumeric())
-            .unwrap_or(false)
-        {
-            self.pos += 1;
-        }
-        let end = self.pos;
-        Ok(self.source[start..end].to_owned())
+impl Parser {
+    fn new(tokens: Vec<Token>) -> Self {
+        Self { tokens, pos: 0 }
     }
 
     fn parse_prop(&mut self) -> Result<Prop, ParseError> {
-        let ident = self.parse_ident()?;
-        Ok(Prop::Atom(ident))
-    }
-
-    fn skip_spaces(&mut self) -> Result<(), ParseError> {
-        while self
-            .next_byte()
-            .map(|b| b.is_ascii_whitespace())
-            .unwrap_or(false)
-        {
-            self.pos += 1;
+        match self.tokens.get(self.pos) {
+            Some(&Token::Ident(ref ident)) => {
+                self.pos += 1;
+                Ok(Prop::Atom(ident.clone()))
+            }
+            None => Err(ParseError),
         }
-        Ok(())
     }
 
     fn parse_eof(&mut self) -> Result<(), ParseError> {
-        self.skip_spaces()?;
-        if self.pos < self.source.len() {
+        if self.pos < self.tokens.len() {
             return Err(ParseError);
         }
         Ok(())
-    }
-
-    fn next_byte(&self) -> Option<u8> {
-        self.source.as_bytes().get(self.pos).copied()
     }
 }
 
 pub fn parse_prop(s: &str) -> Result<Prop, ParseError> {
-    let mut parser = Parser::new(s);
+    let tokens = tokenize(s)?;
+    let mut parser = Parser::new(tokens);
     let prop = parser.parse_prop()?;
     parser.parse_eof()?;
     Ok(prop)
