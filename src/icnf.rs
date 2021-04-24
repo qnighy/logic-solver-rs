@@ -14,6 +14,8 @@ use crate::prop::{Id, IdGen, Prop};
 ///
 /// We extend the "CNF" above in the following ways:
 ///
+/// - Unlike classical CNF, there is a succedent (conclusion part of a sequent).
+///   iCNF's succedent is always a variable.
 /// - Negative literals are treated differently. Instead of `a \/ b \/ ~c \/ ~d`, we use `c /\ d -> a \/ b` as a clause.
 ///   Note that they're classically equivalent, but intuitionistically different.
 /// - There is a special type of clause in the form of `(a -> b) -> c`.
