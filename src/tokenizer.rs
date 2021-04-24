@@ -4,6 +4,8 @@ pub struct ParseError;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Token {
     Ident(String),
+    LParen,
+    RParen,
     Conj,
 }
 
@@ -49,6 +51,12 @@ impl<'a> Tokenizer<'a> {
         } else if next == '∧' {
             self.bump();
             Ok(Some(Token::Conj))
+        } else if next == '(' {
+            self.bump();
+            Ok(Some(Token::LParen))
+        } else if next == ')' {
+            self.bump();
+            Ok(Some(Token::RParen))
         } else {
             Err(ParseError)
         }
@@ -133,6 +141,17 @@ mod tests {
 
         let prop = tokenize("A ∧ B").unwrap();
         assert_eq!(prop, vec![Ident(S("A")), Conj, Ident(S("B"))]);
+    }
+
+    #[test]
+    fn test_paren1() {
+        use Token::*;
+
+        let prop = tokenize("(A) ∧ B").unwrap();
+        assert_eq!(
+            prop,
+            vec![LParen, Ident(S("A")), RParen, Conj, Ident(S("B"))]
+        );
     }
 
     #[allow(non_snake_case)]
