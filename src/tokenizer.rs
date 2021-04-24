@@ -7,6 +7,7 @@ pub enum Token {
     LParen,
     RParen,
     Conj,
+    Disj,
 }
 
 #[derive(Debug)]
@@ -51,6 +52,9 @@ impl<'a> Tokenizer<'a> {
         } else if next == '∧' {
             self.bump();
             Ok(Some(Token::Conj))
+        } else if next == '∨' {
+            self.bump();
+            Ok(Some(Token::Disj))
         } else if next == '(' {
             self.bump();
             Ok(Some(Token::LParen))

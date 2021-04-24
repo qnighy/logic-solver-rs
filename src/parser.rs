@@ -32,7 +32,7 @@ impl Parser {
         }
     }
 
-    fn parse_prop(&mut self) -> Result<Prop, ParseError> {
+    fn parse_conj_prop(&mut self) -> Result<Prop, ParseError> {
         let base_prop = self.parse_primary_prop()?;
         match self.tokens.get(self.pos) {
             Some(&Token::Conj) => {
@@ -42,6 +42,21 @@ impl Parser {
                     props.push(self.parse_primary_prop()?);
                 }
                 Ok(Prop::Conj(props))
+            }
+            _ => Ok(base_prop),
+        }
+    }
+
+    fn parse_prop(&mut self) -> Result<Prop, ParseError> {
+        let base_prop = self.parse_conj_prop()?;
+        match self.tokens.get(self.pos) {
+            Some(&Token::Disj) => {
+                let mut props = vec![base_prop];
+                while let Some(&Token::Disj) = self.tokens.get(self.pos) {
+                    self.pos += 1;
+                    props.push(self.parse_conj_prop()?);
+                }
+                Ok(Prop::Disj(props))
             }
             _ => Ok(base_prop),
         }
@@ -123,6 +138,54 @@ mod tests {
     }
 
     #[test]
+    fn test_disj1() {
+        use Prop::*;
+
+        let prop = parse_prop("A ∨ B").unwrap();
+        assert_eq!(prop, Disj(vec![Atom(S("A")), Atom(S("B"))]));
+    }
+
+    #[test]
+    fn test_disj2() {
+        use Prop::*;
+
+        let prop = parse_prop("A ∨ B ∨ C").unwrap();
+        assert_eq!(prop, Disj(vec![Atom(S("A")), Atom(S("B")), Atom(S("C"))]));
+    }
+
+    #[test]
+    fn test_disj3() {
+        parse_prop("A ∨ B ∨").unwrap_err();
+    }
+
+    #[test]
+    fn test_disj4() {
+        parse_prop("A ∨ ∨ B").unwrap_err();
+    }
+
+    #[test]
+    fn test_conj_disj1() {
+        use Prop::*;
+
+        let prop = parse_prop("A ∧ B ∨ C").unwrap();
+        assert_eq!(
+            prop,
+            Disj(vec![Conj(vec![Atom(S("A")), Atom(S("B"))]), Atom(S("C"))])
+        );
+    }
+
+    #[test]
+    fn test_conj_disj2() {
+        use Prop::*;
+
+        let prop = parse_prop("A ∨ B ∧ C").unwrap();
+        assert_eq!(
+            prop,
+            Disj(vec![Atom(S("A")), Conj(vec![Atom(S("B")), Atom(S("C"))])])
+        );
+    }
+
+    #[test]
     fn test_paren1() {
         use Prop::*;
 
@@ -178,6 +241,17 @@ mod tests {
     #[test]
     fn test_paren8() {
         parse_prop("A)").unwrap_err();
+    }
+
+    #[test]
+    fn test_paren9() {
+        use Prop::*;
+
+        let prop = parse_prop("A ∧ (B ∨ C)").unwrap();
+        assert_eq!(
+            prop,
+            Conj(vec![Atom(S("A")), Disj(vec![Atom(S("B")), Atom(S("C"))])])
+        );
     }
 
     #[allow(non_snake_case)]
