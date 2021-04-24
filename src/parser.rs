@@ -15,6 +15,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_ident(&mut self) -> Result<String, ParseError> {
+        self.skip_spaces()?;
         let start = self.pos;
         let b = self.next_byte().ok_or_else(|| ParseError)?;
         if !b.is_ascii_alphabetic() {
@@ -37,7 +38,19 @@ impl<'a> Parser<'a> {
         Ok(Prop::Atom(ident))
     }
 
+    fn skip_spaces(&mut self) -> Result<(), ParseError> {
+        while self
+            .next_byte()
+            .map(|b| b.is_ascii_whitespace())
+            .unwrap_or(false)
+        {
+            self.pos += 1;
+        }
+        Ok(())
+    }
+
     fn parse_eof(&mut self) -> Result<(), ParseError> {
+        self.skip_spaces()?;
         if self.pos < self.source.len() {
             return Err(ParseError);
         }
@@ -78,7 +91,15 @@ mod tests {
 
     #[test]
     fn test_atom3() {
-        parse_prop("foo23 ").unwrap_err();
+        parse_prop("foo23+").unwrap_err();
+    }
+
+    #[test]
+    fn test_atom4() {
+        use Prop::*;
+
+        let prop = parse_prop("\nfoo23 ").unwrap();
+        assert_eq!(prop, Atom(S("foo23")))
     }
 
     #[allow(non_snake_case)]
