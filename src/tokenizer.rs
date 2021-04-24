@@ -19,17 +19,17 @@ impl<'a> Tokenizer<'a> {
 
     fn parse_ident(&mut self) -> Result<String, ParseError> {
         let start = self.pos;
-        let b = self.next_byte().ok_or_else(|| ParseError)?;
-        if !b.is_ascii_alphabetic() {
+        let ch = self.peek().ok_or_else(|| ParseError)?;
+        if !ch.is_ascii_alphabetic() {
             return Err(ParseError);
         }
-        self.pos += 1;
+        self.bump();
         while self
-            .next_byte()
+            .peek()
             .map(|b| b.is_ascii_alphanumeric())
             .unwrap_or(false)
         {
-            self.pos += 1;
+            self.bump();
         }
         let end = self.pos;
         Ok(self.source[start..end].to_owned())
@@ -46,17 +46,24 @@ impl<'a> Tokenizer<'a> {
 
     fn skip_spaces(&mut self) -> Result<(), ParseError> {
         while self
-            .next_byte()
+            .peek()
             .map(|b| b.is_ascii_whitespace())
             .unwrap_or(false)
         {
-            self.pos += 1;
+            self.bump();
         }
         Ok(())
     }
 
-    fn next_byte(&self) -> Option<u8> {
-        self.source.as_bytes().get(self.pos).copied()
+    fn peek(&self) -> Option<char> {
+        self.source[self.pos..].chars().next()
+    }
+
+    fn bump(&mut self) -> Option<char> {
+        let mut iter = self.source[self.pos..].chars();
+        let ret = iter.next();
+        self.pos = self.source.len() - iter.as_str().len();
+        ret
     }
 }
 
