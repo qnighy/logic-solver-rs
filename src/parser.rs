@@ -28,6 +28,14 @@ impl Parser {
                     Err(ParseError)
                 }
             }
+            Some(&Token::Top) => {
+                self.pos += 1;
+                Ok(Prop::Conj(vec![]))
+            }
+            Some(&Token::Bottom) => {
+                self.pos += 1;
+                Ok(Prop::Disj(vec![]))
+            }
             _ => Err(ParseError),
         }
     }
@@ -183,6 +191,38 @@ mod tests {
             prop,
             Disj(vec![Atom(S("A")), Conj(vec![Atom(S("B")), Atom(S("C"))])])
         );
+    }
+
+    #[test]
+    fn test_top1() {
+        use Prop::*;
+
+        let prop = parse_prop("⊤").unwrap();
+        assert_eq!(prop, Conj(vec![]));
+    }
+
+    #[test]
+    fn test_top2() {
+        use Prop::*;
+
+        let prop = parse_prop("A ∧ ⊤").unwrap();
+        assert_eq!(prop, Conj(vec![Atom(S("A")), Conj(vec![])]));
+    }
+
+    #[test]
+    fn test_bottom1() {
+        use Prop::*;
+
+        let prop = parse_prop("⊥").unwrap();
+        assert_eq!(prop, Disj(vec![]));
+    }
+
+    #[test]
+    fn test_bottom2() {
+        use Prop::*;
+
+        let prop = parse_prop("A ∧ ⊥").unwrap();
+        assert_eq!(prop, Conj(vec![Atom(S("A")), Disj(vec![])]));
     }
 
     #[test]

@@ -8,6 +8,8 @@ pub enum Token {
     RParen,
     Conj,
     Disj,
+    Top,
+    Bottom,
 }
 
 #[derive(Debug)]
@@ -55,6 +57,14 @@ impl<'a> Tokenizer<'a> {
         } else if next == '∨' {
             self.bump();
             Ok(Some(Token::Disj))
+        } else if next == '⊤' {
+            self.bump();
+            Ok(Some(Token::Top))
+        } else if next == '⊥' /* up tack */ || next == '⟂'
+        /* perpendicular */
+        {
+            self.bump();
+            Ok(Some(Token::Bottom))
         } else if next == '(' {
             self.bump();
             Ok(Some(Token::LParen))
@@ -156,6 +166,30 @@ mod tests {
             prop,
             vec![LParen, Ident(S("A")), RParen, Conj, Ident(S("B"))]
         );
+    }
+
+    #[test]
+    fn test_top1() {
+        use Token::*;
+
+        let prop = tokenize("⊤").unwrap();
+        assert_eq!(prop, vec![Top]);
+    }
+
+    #[test]
+    fn test_bottom1() {
+        use Token::*;
+
+        let prop = tokenize("⊥").unwrap();
+        assert_eq!(prop, vec![Bottom]);
+    }
+
+    #[test]
+    fn test_bottom2() {
+        use Token::*;
+
+        let prop = tokenize("⟂").unwrap();
+        assert_eq!(prop, vec![Bottom]);
     }
 
     #[allow(non_snake_case)]
