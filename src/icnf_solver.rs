@@ -4,58 +4,6 @@ use bitvec::vec::BitVec;
 use crate::icnf::{Clause, Icnf};
 use crate::prop::{Id, IdGen};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct TruthTable(BitVec);
-
-impl TruthTable {
-    fn new(idgen: &IdGen) -> Self {
-        Self(bitvec![0; idgen.max_id()])
-    }
-
-    fn get(&self, id: Id) -> bool {
-        self.0[id.index()]
-    }
-
-    fn set(&mut self, id: Id, truth: bool) {
-        self.0.set(id.index(), truth);
-    }
-
-    fn set_temp(&mut self, id: Id, truth: bool) -> TruthTableRewind<'_> {
-        let old_truth = self.get(id);
-        self.set(id, truth);
-        TruthTableRewind {
-            table: self,
-            id,
-            truth: old_truth,
-        }
-    }
-}
-
-struct TruthTableRewind<'a> {
-    table: &'a mut TruthTable,
-    id: Id,
-    truth: bool,
-}
-
-impl std::ops::Deref for TruthTableRewind<'_> {
-    type Target = TruthTable;
-    fn deref(&self) -> &Self::Target {
-        &self.table
-    }
-}
-
-impl std::ops::DerefMut for TruthTableRewind<'_> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.table
-    }
-}
-
-impl Drop for TruthTableRewind<'_> {
-    fn drop(&mut self) {
-        self.table.set(self.id, self.truth);
-    }
-}
-
 pub fn solve_icnf(idgen: &IdGen, icnf: &Icnf) -> bool {
     let truth = TruthTable::new(idgen);
     solve_dfs(&icnf.ant, icnf.suc, &truth)
@@ -111,6 +59,58 @@ fn solve_dfs(ant: &[Clause], goal: Id, truth: &TruthTable) -> bool {
         }
     }
     false
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct TruthTable(BitVec);
+
+impl TruthTable {
+    fn new(idgen: &IdGen) -> Self {
+        Self(bitvec![0; idgen.max_id()])
+    }
+
+    fn get(&self, id: Id) -> bool {
+        self.0[id.index()]
+    }
+
+    fn set(&mut self, id: Id, truth: bool) {
+        self.0.set(id.index(), truth);
+    }
+
+    fn set_temp(&mut self, id: Id, truth: bool) -> TruthTableRewind<'_> {
+        let old_truth = self.get(id);
+        self.set(id, truth);
+        TruthTableRewind {
+            table: self,
+            id,
+            truth: old_truth,
+        }
+    }
+}
+
+struct TruthTableRewind<'a> {
+    table: &'a mut TruthTable,
+    id: Id,
+    truth: bool,
+}
+
+impl std::ops::Deref for TruthTableRewind<'_> {
+    type Target = TruthTable;
+    fn deref(&self) -> &Self::Target {
+        &self.table
+    }
+}
+
+impl std::ops::DerefMut for TruthTableRewind<'_> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.table
+    }
+}
+
+impl Drop for TruthTableRewind<'_> {
+    fn drop(&mut self) {
+        self.table.set(self.id, self.truth);
+    }
 }
 
 #[cfg(test)]
