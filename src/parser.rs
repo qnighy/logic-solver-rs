@@ -55,7 +55,7 @@ impl Parser {
         }
     }
 
-    fn parse_prop(&mut self) -> Result<Prop, ParseError> {
+    fn parse_disj_prop(&mut self) -> Result<Prop, ParseError> {
         let base_prop = self.parse_conj_prop()?;
         match self.tokens.get(self.pos) {
             Some(&Token::Disj) => {
@@ -65,6 +65,18 @@ impl Parser {
                     props.push(self.parse_conj_prop()?);
                 }
                 Ok(Prop::Disj(props))
+            }
+            _ => Ok(base_prop),
+        }
+    }
+
+    fn parse_prop(&mut self) -> Result<Prop, ParseError> {
+        let base_prop = self.parse_disj_prop()?;
+        match self.tokens.get(self.pos) {
+            Some(&Token::Arrow) => {
+                self.pos += 1;
+                let rhs = self.parse_prop()?;
+                Ok(Prop::Impl(Box::new(base_prop), Box::new(rhs)))
             }
             _ => Ok(base_prop),
         }
@@ -226,6 +238,44 @@ mod tests {
     }
 
     #[test]
+    fn test_impl1() {
+        use Prop::*;
+
+        let prop = parse_prop("A → B").unwrap();
+        assert_eq!(prop, impl_(Atom(S("A")), Atom(S("B"))));
+    }
+
+    #[test]
+    fn test_impl2() {
+        use Prop::*;
+
+        let prop = parse_prop("A → B → C").unwrap();
+        assert_eq!(prop, impl_(Atom(S("A")), impl_(Atom(S("B")), Atom(S("C")))));
+    }
+
+    #[test]
+    fn test_impl3() {
+        use Prop::*;
+
+        let prop = parse_prop("(A → B) → C").unwrap();
+        assert_eq!(prop, impl_(impl_(Atom(S("A")), Atom(S("B"))), Atom(S("C"))));
+    }
+
+    #[test]
+    fn test_impl4() {
+        use Prop::*;
+
+        let prop = parse_prop("A ∨ B → C ∨ D").unwrap();
+        assert_eq!(
+            prop,
+            impl_(
+                Disj(vec![Atom(S("A")), Atom(S("B"))]),
+                Disj(vec![Atom(S("C")), Atom(S("D"))])
+            )
+        );
+    }
+
+    #[test]
     fn test_paren1() {
         use Prop::*;
 
@@ -292,6 +342,10 @@ mod tests {
             prop,
             Conj(vec![Atom(S("A")), Disj(vec![Atom(S("B")), Atom(S("C"))])])
         );
+    }
+
+    fn impl_(lhs: Prop, rhs: Prop) -> Prop {
+        Prop::Impl(Box::new(lhs), Box::new(rhs))
     }
 
     #[allow(non_snake_case)]

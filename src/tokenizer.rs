@@ -6,6 +6,7 @@ pub enum Token {
     Ident(String),
     LParen,
     RParen,
+    Arrow,
     Conj,
     Disj,
     Top,
@@ -51,6 +52,9 @@ impl<'a> Tokenizer<'a> {
         if next.is_ascii_alphabetic() {
             let ident = self.parse_ident()?;
             Ok(Some(Token::Ident(ident)))
+        } else if next == '→' {
+            self.bump();
+            Ok(Some(Token::Arrow))
         } else if next == '∧' {
             self.bump();
             Ok(Some(Token::Conj))
@@ -139,6 +143,14 @@ mod tests {
 
         let prop = tokenize("\nfoo23 ").unwrap();
         assert_eq!(prop, vec![Ident(S("foo23"))]);
+    }
+
+    #[test]
+    fn test_arrow() {
+        use Token::*;
+
+        let prop = tokenize("→").unwrap();
+        assert_eq!(prop, vec![Arrow]);
     }
 
     #[test]
