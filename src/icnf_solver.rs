@@ -6,10 +6,10 @@ use crate::prop::{Id, IdGen};
 
 pub fn solve_icnf(idgen: &IdGen, icnf: &Icnf) -> bool {
     let truth = TruthTable::new(idgen);
-    solve_dfs(&icnf.ant, icnf.suc, &truth)
+    solve_dfs(&icnf.ant, icnf.suc, &truth).is_some()
 }
 
-fn solve_dfs(ant: &[Clause], goal: Id, truth: &TruthTable) -> bool {
+fn solve_dfs(ant: &[Clause], goal: Id, truth: &TruthTable) -> Option<Trace> {
     let mut truth = truth.clone();
     loop {
         let mut updated = false;
@@ -32,9 +32,9 @@ fn solve_dfs(ant: &[Clause], goal: Id, truth: &TruthTable) -> bool {
         }
     }
     if truth.get(goal) {
-        return true;
+        return Some(Trace::Trivial);
     }
-    for clause in ant {
+    for (i, clause) in ant.iter().enumerate() {
         match clause {
             Clause::Conj(..) => {
                 // do nothing
@@ -49,15 +49,14 @@ fn solve_dfs(ant: &[Clause], goal: Id, truth: &TruthTable) -> bool {
                     let mut truth = truth.set_temp(*a, true);
                     solve_dfs(ant, *b, &mut truth)
                 };
-                if !sub0 {
-                    continue;
-                }
-                let sub1 = {
-                    let mut truth = truth.set_temp(*c, true);
-                    solve_dfs(ant, goal, &mut truth)
-                };
-                if sub1 {
-                    return true;
+                if let Some(sub0) = sub0 {
+                    let sub1 = {
+                        let mut truth = truth.set_temp(*c, true);
+                        solve_dfs(ant, goal, &mut truth)
+                    };
+                    if let Some(sub1) = sub1 {
+                        return Some(Trace::Impl(i, Box::new(sub0), Box::new(sub1)));
+                    }
                 }
             }
             Clause::Disj(lhs, rhs) => {
@@ -67,16 +66,27 @@ fn solve_dfs(ant: &[Clause], goal: Id, truth: &TruthTable) -> bool {
                 {
                     continue;
                 }
-                if rhs.iter().all(|&option| {
-                    let mut truth = truth.set_temp(option, true);
-                    solve_dfs(ant, goal, &mut truth)
-                }) {
-                    return true;
+                let children = rhs
+                    .iter()
+                    .map(|&option| {
+                        let mut truth = truth.set_temp(option, true);
+                        solve_dfs(ant, goal, &mut truth)
+                    })
+                    .collect::<Option<Vec<_>>>();
+                if let Some(children) = children {
+                    return Some(Trace::Disj(i, children));
                 }
             }
         }
     }
-    false
+    None
+}
+
+#[derive(Debug, Clone)]
+enum Trace {
+    Trivial,
+    Impl(usize, Box<Trace>, Box<Trace>),
+    Disj(usize, Vec<Trace>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
