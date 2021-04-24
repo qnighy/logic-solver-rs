@@ -19,6 +19,12 @@ fn solve_dfs(ant: &[Clause], goal: Id, truth: &TruthTable) -> bool {
                     truth.set(*rhs, true);
                     updated = true;
                 }
+            } else if let Clause::Impl(_, lhs, rhs) = clause {
+                // ((a -> b) -> c) implies (b -> c)
+                if !truth.get(*rhs) && truth.get(*lhs) {
+                    truth.set(*rhs, true);
+                    updated = true;
+                }
             }
         }
         if !updated {
@@ -34,10 +40,11 @@ fn solve_dfs(ant: &[Clause], goal: Id, truth: &TruthTable) -> bool {
                 // do nothing
             }
             Clause::Impl(a, b, c) => {
-                if truth.get(*c) {
+                // If c is already true, the second branch produces the same sequent.
+                // If a is already true, the clause is already handled above in the closure calculation.
+                if truth.get(*c) || truth.get(*a) {
                     continue;
                 }
-                // TODO: avoid infinite recursion here
                 let sub0 = {
                     let mut truth = truth.set_temp(*a, true);
                     solve_dfs(ant, *b, &mut truth)
@@ -175,19 +182,19 @@ mod tests {
         assert_eq!(provable, true);
     }
 
-    // #[test]
-    // fn test_solve_icnf5() {
-    //     let mut idgen = IdGen::new();
-    //     let id1 = idgen.fresh();
-    //     let id2 = idgen.fresh();
-    //     let id3 = idgen.fresh();
-    //     let provable = solve_icnf(
-    //         &idgen,
-    //         &Icnf {
-    //             ant: vec![Clause::Impl(id1, id2, id3)],
-    //             suc: id3,
-    //         },
-    //     );
-    //     assert_eq!(provable, false);
-    // }
+    #[test]
+    fn test_solve_icnf5() {
+        let mut idgen = IdGen::new();
+        let id1 = idgen.fresh();
+        let id2 = idgen.fresh();
+        let id3 = idgen.fresh();
+        let provable = solve_icnf(
+            &idgen,
+            &Icnf {
+                ant: vec![Clause::Impl(id1, id2, id3)],
+                suc: id3,
+            },
+        );
+        assert_eq!(provable, false);
+    }
 }
