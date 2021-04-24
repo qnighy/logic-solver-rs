@@ -197,4 +197,41 @@ mod tests {
         );
         assert_eq!(provable, false);
     }
+
+    #[test]
+    fn test_solve_icnf6() {
+        let mut idgen = IdGen::new();
+        let id1 = idgen.fresh();
+        let id2 = idgen.fresh();
+        let provable = solve_icnf(
+            &idgen,
+            &Icnf {
+                ant: vec![Clause::Impl(id1, id2, id1)],
+                suc: id1,
+            },
+        );
+        assert_eq!(provable, false);
+    }
+
+    #[test]
+    fn test_solve_icnf7() {
+        let mut idgen = IdGen::new();
+        let id1 = idgen.fresh();
+        let id2 = idgen.fresh();
+        let id3 = idgen.fresh();
+        let id4 = idgen.fresh();
+        let id5 = idgen.fresh();
+        let provable = solve_icnf(
+            &idgen,
+            &Icnf {
+                ant: vec![
+                    Clause::Impl(id1, id2, id3),
+                    Clause::Conj(vec![id4, id3], id1),
+                    Clause::Impl(id4, id1, id5),
+                ],
+                suc: id5,
+            },
+        );
+        assert_eq!(provable, false);
+    }
 }
