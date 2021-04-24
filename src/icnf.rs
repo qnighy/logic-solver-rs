@@ -4,8 +4,8 @@ use crate::prop::{Id, IdGen, Prop};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Icnf {
-    ant: Vec<Clause>,
-    suc: Id,
+    pub ant: Vec<Clause>,
+    pub suc: Id,
 }
 
 impl Icnf {

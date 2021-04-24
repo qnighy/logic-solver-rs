@@ -106,10 +106,20 @@ impl IdGen {
         self.next_id += 1;
         Id(num)
     }
+
+    pub fn max_id(&self) -> usize {
+        self.next_id
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Id(#[cfg(not(test))] usize, #[cfg(test)] pub usize);
+
+impl Id {
+    pub fn index(&self) -> usize {
+        self.0
+    }
+}
 
 #[cfg(test)]
 mod tests {
