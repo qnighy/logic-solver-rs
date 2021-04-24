@@ -114,6 +114,7 @@ pub struct Id(#[cfg(not(test))] usize, #[cfg(test)] pub usize);
 #[cfg(test)]
 mod tests {
     use super::*;
+    use big_s::S;
 
     #[test]
     fn test_from_ast1() {
@@ -188,10 +189,5 @@ mod tests {
             Prop::Disj(vec![Prop::Atom(id1), Prop::Atom(id1)]).to_ast(&env),
             PropAst::Disj(vec![PropAst::Atom(S("A")), PropAst::Atom(S("A"))])
         );
-    }
-
-    #[allow(non_snake_case)]
-    fn S(s: &str) -> String {
-        s.to_owned()
     }
 }

@@ -115,6 +115,7 @@ pub fn tokenize(s: &str) -> Result<Vec<Token>, ParseError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use big_s::S;
 
     #[test]
     fn test_atom1() {
@@ -202,10 +203,5 @@ mod tests {
 
         let prop = tokenize("⟂").unwrap();
         assert_eq!(prop, vec![Bottom]);
-    }
-
-    #[allow(non_snake_case)]
-    fn S(s: &str) -> String {
-        s.to_owned()
     }
 }

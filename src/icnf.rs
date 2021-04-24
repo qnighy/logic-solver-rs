@@ -90,6 +90,7 @@ pub enum ShallowProp {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use maplit::hashmap;
 
     #[test]
     fn test_from_prop1() {
@@ -105,7 +106,7 @@ mod tests {
                     suc: Id(1)
                 },
                 Decomposition {
-                    map: vec![(Id(1), ShallowProp::Atom)].into_iter().collect()
+                    map: hashmap! {Id(1) => ShallowProp::Atom},
                 }
             )
         );
@@ -128,12 +129,10 @@ mod tests {
                     suc: Id(2)
                 },
                 Decomposition {
-                    map: vec![
-                        (Id(1), ShallowProp::Atom),
-                        (Id(2), ShallowProp::Impl(Id(1), Id(1))),
-                    ]
-                    .into_iter()
-                    .collect()
+                    map: hashmap! {
+                        Id(1) => ShallowProp::Atom,
+                        Id(2) => ShallowProp::Impl(Id(1), Id(1)),
+                    },
                 }
             )
         );
@@ -166,15 +165,13 @@ mod tests {
                     suc: Id(5),
                 },
                 Decomposition {
-                    map: vec![
-                        (Id(4), ShallowProp::Disj(vec![Id(2), Id(1)])),
-                        (Id(2), ShallowProp::Atom),
-                        (Id(1), ShallowProp::Atom),
-                        (Id(3), ShallowProp::Disj(vec![Id(1), Id(2)])),
-                        (Id(5), ShallowProp::Impl(Id(3), Id(4))),
-                    ]
-                    .into_iter()
-                    .collect(),
+                    map: hashmap! {
+                        Id(4) => ShallowProp::Disj(vec![Id(2), Id(1)]),
+                        Id(2) => ShallowProp::Atom,
+                        Id(1) => ShallowProp::Atom,
+                        Id(3) => ShallowProp::Disj(vec![Id(1), Id(2)]),
+                        Id(5) => ShallowProp::Impl(Id(3), Id(4)),
+                    },
                 },
             )
         );
@@ -207,15 +204,13 @@ mod tests {
                     suc: Id(5),
                 },
                 Decomposition {
-                    map: vec![
-                        (Id(4), ShallowProp::Conj(vec![Id(2), Id(1)])),
-                        (Id(2), ShallowProp::Atom),
-                        (Id(1), ShallowProp::Atom),
-                        (Id(3), ShallowProp::Conj(vec![Id(1), Id(2)])),
-                        (Id(5), ShallowProp::Impl(Id(3), Id(4))),
-                    ]
-                    .into_iter()
-                    .collect(),
+                    map: hashmap![
+                        Id(4) => ShallowProp::Conj(vec![Id(2), Id(1)]),
+                        Id(2) => ShallowProp::Atom,
+                        Id(1) => ShallowProp::Atom,
+                        Id(3) => ShallowProp::Conj(vec![Id(1), Id(2)]),
+                        Id(5) => ShallowProp::Impl(Id(3), Id(4)),
+                    ],
                 },
             )
         );

@@ -101,6 +101,7 @@ pub fn parse_prop(s: &str) -> Result<Prop, ParseError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use big_s::S;
 
     #[test]
     fn test_atom1() {
@@ -346,10 +347,5 @@ mod tests {
 
     fn impl_(lhs: Prop, rhs: Prop) -> Prop {
         Prop::Impl(Box::new(lhs), Box::new(rhs))
-    }
-
-    #[allow(non_snake_case)]
-    fn S(s: &str) -> String {
-        s.to_owned()
     }
 }
