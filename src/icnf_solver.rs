@@ -5,7 +5,7 @@ use crate::icnf::{Clause, Icnf};
 use crate::prop::{Id, IdGen};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TruthTable(BitVec);
+struct TruthTable(BitVec);
 
 impl TruthTable {
     fn new(idgen: &IdGen) -> Self {
@@ -20,15 +20,39 @@ impl TruthTable {
         self.0.set(id.index(), truth);
     }
 
-    fn with<R, F>(&mut self, id: Id, truth: bool, f: F) -> R
-    where
-        F: FnOnce(&mut Self) -> R,
-    {
+    fn set_temp(&mut self, id: Id, truth: bool) -> TruthTableRewind<'_> {
         let old_truth = self.get(id);
         self.set(id, truth);
-        let r = f(self);
-        self.set(id, old_truth);
-        r
+        TruthTableRewind {
+            table: self,
+            id,
+            truth: old_truth,
+        }
+    }
+}
+
+struct TruthTableRewind<'a> {
+    table: &'a mut TruthTable,
+    id: Id,
+    truth: bool,
+}
+
+impl std::ops::Deref for TruthTableRewind<'_> {
+    type Target = TruthTable;
+    fn deref(&self) -> &Self::Target {
+        &self.table
+    }
+}
+
+impl std::ops::DerefMut for TruthTableRewind<'_> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.table
+    }
+}
+
+impl Drop for TruthTableRewind<'_> {
+    fn drop(&mut self) {
+        self.table.set(self.id, self.truth);
     }
 }
 
@@ -66,11 +90,17 @@ fn solve_dfs(ant: &[Clause], goal: Id, truth: &TruthTable) -> bool {
                     continue;
                 }
                 // TODO: avoid infinite recursion here
-                let sub0 = truth.with(*a, true, |truth| solve_dfs(ant, *b, truth));
+                let sub0 = {
+                    let mut truth = truth.set_temp(*a, true);
+                    solve_dfs(ant, *b, &mut truth)
+                };
                 if !sub0 {
                     continue;
                 }
-                let sub1 = truth.with(*c, true, |truth| solve_dfs(ant, goal, truth));
+                let sub1 = {
+                    let mut truth = truth.set_temp(*c, true);
+                    solve_dfs(ant, goal, &mut truth)
+                };
                 if sub1 {
                     return true;
                 }
