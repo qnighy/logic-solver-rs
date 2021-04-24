@@ -31,7 +31,7 @@ impl Icnf {
         let mut decomp = Decomposition {
             map: HashMap::new(),
         };
-        let suc = Self::from_prop_with(idgen, &mut decomp, &mut ant, prop);
+        let suc = Self::from_prop_with(idgen, &mut decomp, &mut ant, prop, true, false);
         (Self { ant, suc }, decomp)
     }
     fn from_prop_with(
@@ -39,6 +39,8 @@ impl Icnf {
         decomp: &mut Decomposition,
         ant: &mut Vec<Clause>,
         prop: &Prop,
+        positive: bool,
+        negative: bool,
     ) -> Id {
         match prop {
             Prop::Atom(id) => {
@@ -46,23 +48,33 @@ impl Icnf {
                 *id
             }
             Prop::Impl(lhs, rhs) => {
-                let lhs = Self::from_prop_with(idgen, decomp, ant, lhs);
-                let rhs = Self::from_prop_with(idgen, decomp, ant, rhs);
+                let lhs = Self::from_prop_with(idgen, decomp, ant, lhs, negative, positive);
+                let rhs = Self::from_prop_with(idgen, decomp, ant, rhs, positive, negative);
                 let id = idgen.fresh();
-                ant.push(Clause::Impl(lhs, rhs, id));
-                ant.push(Clause::Conj(vec![id, lhs], rhs));
+                if positive {
+                    ant.push(Clause::Impl(lhs, rhs, id));
+                }
+                if negative {
+                    ant.push(Clause::Conj(vec![id, lhs], rhs));
+                }
                 decomp.map.insert(id, ShallowProp::Impl(lhs, rhs));
                 id
             }
             Prop::Conj(children) => {
                 let children = children
                     .iter()
-                    .map(|child| Self::from_prop_with(idgen, decomp, ant, child))
+                    .map(|child| {
+                        Self::from_prop_with(idgen, decomp, ant, child, positive, negative)
+                    })
                     .collect::<Vec<_>>();
                 let id = idgen.fresh();
-                ant.push(Clause::Conj(children.clone(), id));
-                for &child in &children {
-                    ant.push(Clause::Conj(vec![id], child));
+                if positive {
+                    ant.push(Clause::Conj(children.clone(), id));
+                }
+                if negative {
+                    for &child in &children {
+                        ant.push(Clause::Conj(vec![id], child));
+                    }
                 }
                 decomp.map.insert(id, ShallowProp::Conj(children));
                 id
@@ -70,13 +82,19 @@ impl Icnf {
             Prop::Disj(children) => {
                 let children = children
                     .iter()
-                    .map(|child| Self::from_prop_with(idgen, decomp, ant, child))
+                    .map(|child| {
+                        Self::from_prop_with(idgen, decomp, ant, child, positive, negative)
+                    })
                     .collect::<Vec<_>>();
                 let id = idgen.fresh();
-                for &child in &children {
-                    ant.push(Clause::Conj(vec![child], id));
+                if positive {
+                    for &child in &children {
+                        ant.push(Clause::Conj(vec![child], id));
+                    }
                 }
-                ant.push(Clause::Disj(vec![id], children.clone()));
+                if negative {
+                    ant.push(Clause::Disj(vec![id], children.clone()));
+                }
                 decomp.map.insert(id, ShallowProp::Disj(children));
                 id
             }
@@ -142,10 +160,7 @@ mod tests {
             result,
             (
                 Icnf {
-                    ant: vec![
-                        Clause::Impl(Id(1), Id(1), Id(2)),
-                        Clause::Conj(vec![Id(2), Id(1)], Id(1)),
-                    ],
+                    ant: vec![Clause::Impl(Id(1), Id(1), Id(2)),],
                     suc: Id(2)
                 },
                 Decomposition {
@@ -173,14 +188,10 @@ mod tests {
             (
                 Icnf {
                     ant: vec![
-                        Clause::Conj(vec![Id(1)], Id(3)),
-                        Clause::Conj(vec![Id(2)], Id(3)),
                         Clause::Disj(vec![Id(3)], vec![Id(1), Id(2)]),
                         Clause::Conj(vec![Id(2)], Id(4)),
                         Clause::Conj(vec![Id(1)], Id(4)),
-                        Clause::Disj(vec![Id(4)], vec![Id(2), Id(1)]),
                         Clause::Impl(Id(3), Id(4), Id(5)),
-                        Clause::Conj(vec![Id(5), Id(3)], Id(4)),
                     ],
                     suc: Id(5),
                 },
@@ -212,14 +223,10 @@ mod tests {
             (
                 Icnf {
                     ant: vec![
-                        Clause::Conj(vec![Id(1), Id(2)], Id(3)),
                         Clause::Conj(vec![Id(3)], Id(1)),
                         Clause::Conj(vec![Id(3)], Id(2)),
                         Clause::Conj(vec![Id(2), Id(1)], Id(4)),
-                        Clause::Conj(vec![Id(4)], Id(2)),
-                        Clause::Conj(vec![Id(4)], Id(1)),
                         Clause::Impl(Id(3), Id(4), Id(5)),
-                        Clause::Conj(vec![Id(5), Id(3)], Id(4))
                     ],
                     suc: Id(5),
                 },
