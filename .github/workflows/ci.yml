@@ -1,0 +1,26 @@
+name: build and test
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust: [stable]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.rust }}
+          override: true
+      - run: cargo check --frozen --all
+      - run: cargo test --frozen --all
+      - name: rustfmt
+        run: |
+          rustup component add rustfmt
+          cargo fmt --all -- --check
+      - name: clippy
+        run: |
+          rustup component add clippy
+          cargo clippy --all -- -D warnings
