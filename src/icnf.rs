@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::prop::{Id, IdGen, Prop};
+use crate::prop::{Id, Prop};
 
 /// iCNF (implicational CNF), a modified version of CNF for intuitionistic logic.
 ///
@@ -24,81 +24,83 @@ pub struct Icnf {
     /// Hypotheses
     pub ant: ClauseSet,
     /// Goal
-    pub suc: Id,
+    pub suc: Var,
 }
 
 impl Icnf {
-    pub fn from_prop(idgen: &mut IdGen, prop: &Prop) -> (Icnf, Decomposition) {
+    pub fn from_prop(vargen: &mut VarGen, prop: &Prop) -> (Icnf, Decomposition) {
         let mut ant = ClauseSet::default();
         let mut decomp = Decomposition {
+            id_map: HashMap::new(),
             map: HashMap::new(),
         };
-        let suc = Self::from_prop_with(idgen, &mut decomp, &mut ant, prop, true, false);
+        let suc = Self::from_prop_with(vargen, &mut decomp, &mut ant, prop, true, false);
         (Self { ant, suc }, decomp)
     }
     fn from_prop_with(
-        idgen: &mut IdGen,
+        vargen: &mut VarGen,
         decomp: &mut Decomposition,
         ant: &mut ClauseSet,
         prop: &Prop,
         positive: bool,
         negative: bool,
-    ) -> Id {
+    ) -> Var {
         match prop {
             Prop::Atom(id) => {
-                decomp.map.insert(*id, ShallowProp::Atom);
-                *id
+                let var = *decomp.id_map.entry(*id).or_insert_with(|| vargen.fresh());
+                decomp.map.insert(var, ShallowProp::Atom(*id));
+                var
             }
             Prop::Impl(lhs, rhs) => {
-                let lhs = Self::from_prop_with(idgen, decomp, ant, lhs, negative, positive);
-                let rhs = Self::from_prop_with(idgen, decomp, ant, rhs, positive, negative);
-                let id = idgen.fresh();
+                let lhs = Self::from_prop_with(vargen, decomp, ant, lhs, negative, positive);
+                let rhs = Self::from_prop_with(vargen, decomp, ant, rhs, positive, negative);
+                let var = vargen.fresh();
                 if positive {
-                    ant.push(Clause::Impl(lhs, rhs, id));
+                    ant.push(Clause::Impl(lhs, rhs, var));
                 }
                 if negative {
-                    ant.push(Clause::Conj(vec![id, lhs], rhs));
+                    ant.push(Clause::Conj(vec![var, lhs], rhs));
                 }
-                decomp.map.insert(id, ShallowProp::Impl(lhs, rhs));
-                id
+                decomp.map.insert(var, ShallowProp::Impl(lhs, rhs));
+                var
             }
             Prop::Conj(children) => {
                 let children = children
                     .iter()
                     .map(|child| {
-                        Self::from_prop_with(idgen, decomp, ant, child, positive, negative)
+                        Self::from_prop_with(vargen, decomp, ant, child, positive, negative)
                     })
                     .collect::<Vec<_>>();
-                let id = idgen.fresh();
+                let var = vargen.fresh();
                 if positive {
-                    ant.push(Clause::Conj(children.clone(), id));
+                    ant.push(Clause::Conj(children.clone(), var));
                 }
                 if negative {
                     for &child in &children {
-                        ant.push(Clause::Conj(vec![id], child));
+                        ant.push(Clause::Conj(vec![var], child));
                     }
                 }
-                decomp.map.insert(id, ShallowProp::Conj(children));
-                id
+                decomp.map.insert(var, ShallowProp::Conj(children));
+                var
             }
             Prop::Disj(children) => {
                 let children = children
                     .iter()
                     .map(|child| {
-                        Self::from_prop_with(idgen, decomp, ant, child, positive, negative)
+                        Self::from_prop_with(vargen, decomp, ant, child, positive, negative)
                     })
                     .collect::<Vec<_>>();
-                let id = idgen.fresh();
+                let var = vargen.fresh();
                 if positive {
                     for &child in &children {
-                        ant.push(Clause::Conj(vec![child], id));
+                        ant.push(Clause::Conj(vec![child], var));
                     }
                 }
                 if negative {
-                    ant.push(Clause::Disj(vec![id], children.clone()));
+                    ant.push(Clause::Disj(vec![var], children.clone()));
                 }
-                decomp.map.insert(id, ShallowProp::Disj(children));
-                id
+                decomp.map.insert(var, ShallowProp::Disj(children));
+                var
             }
         }
     }
@@ -107,24 +109,49 @@ impl Icnf {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Clause {
     /// (p1 & p2 & ... & pn) -> q
-    Conj(Vec<Id>, Id),
+    Conj(Vec<Var>, Var),
     /// (p1 & p2 & ... & pn) -> (q1 | q2 | ... | qn)
-    Disj(Vec<Id>, Vec<Id>),
+    Disj(Vec<Var>, Vec<Var>),
     /// (p -> q) -> r
-    Impl(Id, Id, Id),
+    Impl(Var, Var, Var),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Decomposition {
-    map: HashMap<Id, ShallowProp>,
+    id_map: HashMap<Id, Var>,
+    map: HashMap<Var, ShallowProp>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ShallowProp {
-    Atom,
-    Impl(Id, Id),
-    Conj(Vec<Id>),
-    Disj(Vec<Id>),
+    Atom(Id),
+    Impl(Var, Var),
+    Conj(Vec<Var>),
+    Disj(Vec<Var>),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Var(pub usize);
+
+#[derive(Debug, Clone, Default)]
+pub struct VarGen {
+    next_id: usize,
+}
+
+impl VarGen {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn fresh(&mut self) -> Var {
+        let var = Var(self.next_id);
+        self.next_id += 1;
+        var
+    }
+
+    pub fn max_id(&self) -> usize {
+        self.next_id
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -183,6 +210,7 @@ pub enum Proof {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::prop::IdGen;
     use maplit::hashmap;
 
     #[test]
@@ -190,16 +218,17 @@ mod tests {
         let mut idgen = IdGen::new();
         let id1 = idgen.fresh();
         let prop = Prop::Atom(id1);
-        let result = Icnf::from_prop(&mut idgen, &prop);
+        let result = Icnf::from_prop(&mut VarGen::new(), &prop);
         assert_eq!(
             result,
             (
                 Icnf {
                     ant: ClauseSet { vec: vec![] },
-                    suc: Id(0)
+                    suc: Var(0)
                 },
                 Decomposition {
-                    map: hashmap! {Id(0) => ShallowProp::Atom},
+                    id_map: hashmap![Id(0) => Var(0)],
+                    map: hashmap! {Var(0) => ShallowProp::Atom(Id(0))},
                 }
             )
         );
@@ -210,20 +239,21 @@ mod tests {
         let mut idgen = IdGen::new();
         let id1 = idgen.fresh();
         let prop = Prop::Impl(Box::new(Prop::Atom(id1)), Box::new(Prop::Atom(id1)));
-        let result = Icnf::from_prop(&mut idgen, &prop);
+        let result = Icnf::from_prop(&mut VarGen::new(), &prop);
         assert_eq!(
             result,
             (
                 Icnf {
                     ant: ClauseSet {
-                        vec: vec![Clause::Impl(Id(0), Id(0), Id(1)),]
+                        vec: vec![Clause::Impl(Var(0), Var(0), Var(1)),]
                     },
-                    suc: Id(1)
+                    suc: Var(1)
                 },
                 Decomposition {
+                    id_map: hashmap![Id(0) => Var(0)],
                     map: hashmap! {
-                        Id(0) => ShallowProp::Atom,
-                        Id(1) => ShallowProp::Impl(Id(0), Id(0)),
+                        Var(0) => ShallowProp::Atom(Id(0)),
+                        Var(1) => ShallowProp::Impl(Var(0), Var(0)),
                     },
                 }
             )
@@ -239,28 +269,29 @@ mod tests {
             Box::new(Prop::Disj(vec![Prop::Atom(id1), Prop::Atom(id2)])),
             Box::new(Prop::Disj(vec![Prop::Atom(id2), Prop::Atom(id1)])),
         );
-        let result = Icnf::from_prop(&mut idgen, &prop);
+        let result = Icnf::from_prop(&mut VarGen::new(), &prop);
         assert_eq!(
             result,
             (
                 Icnf {
                     ant: ClauseSet {
                         vec: vec![
-                            Clause::Disj(vec![Id(2)], vec![Id(0), Id(1)]),
-                            Clause::Conj(vec![Id(1)], Id(3)),
-                            Clause::Conj(vec![Id(0)], Id(3)),
-                            Clause::Impl(Id(2), Id(3), Id(4)),
+                            Clause::Disj(vec![Var(2)], vec![Var(0), Var(1)]),
+                            Clause::Conj(vec![Var(1)], Var(3)),
+                            Clause::Conj(vec![Var(0)], Var(3)),
+                            Clause::Impl(Var(2), Var(3), Var(4)),
                         ]
                     },
-                    suc: Id(4),
+                    suc: Var(4),
                 },
                 Decomposition {
+                    id_map: hashmap![Id(0) => Var(0), Id(1) => Var(1)],
                     map: hashmap! {
-                        Id(3) => ShallowProp::Disj(vec![Id(1), Id(0)]),
-                        Id(1) => ShallowProp::Atom,
-                        Id(0) => ShallowProp::Atom,
-                        Id(2) => ShallowProp::Disj(vec![Id(0), Id(1)]),
-                        Id(4) => ShallowProp::Impl(Id(2), Id(3)),
+                        Var(3) => ShallowProp::Disj(vec![Var(1), Var(0)]),
+                        Var(1) => ShallowProp::Atom(Id(1)),
+                        Var(0) => ShallowProp::Atom(Id(0)),
+                        Var(2) => ShallowProp::Disj(vec![Var(0), Var(1)]),
+                        Var(4) => ShallowProp::Impl(Var(2), Var(3)),
                     },
                 },
             )
@@ -276,28 +307,29 @@ mod tests {
             Box::new(Prop::Conj(vec![Prop::Atom(id1), Prop::Atom(id2)])),
             Box::new(Prop::Conj(vec![Prop::Atom(id2), Prop::Atom(id1)])),
         );
-        let result = Icnf::from_prop(&mut idgen, &prop);
+        let result = Icnf::from_prop(&mut VarGen::new(), &prop);
         assert_eq!(
             result,
             (
                 Icnf {
                     ant: ClauseSet {
                         vec: vec![
-                            Clause::Conj(vec![Id(2)], Id(0)),
-                            Clause::Conj(vec![Id(2)], Id(1)),
-                            Clause::Conj(vec![Id(1), Id(0)], Id(3)),
-                            Clause::Impl(Id(2), Id(3), Id(4)),
+                            Clause::Conj(vec![Var(2)], Var(0)),
+                            Clause::Conj(vec![Var(2)], Var(1)),
+                            Clause::Conj(vec![Var(1), Var(0)], Var(3)),
+                            Clause::Impl(Var(2), Var(3), Var(4)),
                         ]
                     },
-                    suc: Id(4),
+                    suc: Var(4),
                 },
                 Decomposition {
+                    id_map: hashmap![Id(0) => Var(0), Id(1) => Var(1)],
                     map: hashmap![
-                        Id(3) => ShallowProp::Conj(vec![Id(1), Id(0)]),
-                        Id(1) => ShallowProp::Atom,
-                        Id(0) => ShallowProp::Atom,
-                        Id(2) => ShallowProp::Conj(vec![Id(0), Id(1)]),
-                        Id(4) => ShallowProp::Impl(Id(2), Id(3)),
+                        Var(3) => ShallowProp::Conj(vec![Var(1), Var(0)]),
+                        Var(1) => ShallowProp::Atom(Id(1)),
+                        Var(0) => ShallowProp::Atom(Id(0)),
+                        Var(2) => ShallowProp::Conj(vec![Var(0), Var(1)]),
+                        Var(4) => ShallowProp::Impl(Var(2), Var(3)),
                     ],
                 },
             )

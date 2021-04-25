@@ -1,21 +1,20 @@
 use bitvec::prelude::*;
 use bitvec::vec::BitVec;
 
-use crate::icnf::{ClId, Clause, ClauseSet, Icnf, Proof};
-use crate::prop::{Id, IdGen};
+use crate::icnf::{ClId, Clause, ClauseSet, Icnf, Proof, Var, VarGen};
 
-pub fn solve_icnf(idgen: &IdGen, icnf: &Icnf) -> Option<Proof> {
-    let truth = TruthTable::new(idgen);
+pub fn solve_icnf(vargen: &VarGen, icnf: &Icnf) -> Option<Proof> {
+    let truth = TruthTable::new(vargen);
     let trace = solve_dfs(&icnf.ant, icnf.suc, &truth)?;
     Some(reconstruct_proof(
-        idgen.max_id(),
+        vargen.max_id(),
         &icnf.ant,
         icnf.suc,
         &trace,
     ))
 }
 
-fn solve_dfs(ant: &ClauseSet, goal: Id, truth: &TruthTable) -> Option<Trace> {
+fn solve_dfs(ant: &ClauseSet, goal: Var, truth: &TruthTable) -> Option<Trace> {
     let mut truth = truth.clone();
     loop {
         let mut updated = false;
@@ -88,27 +87,27 @@ fn solve_dfs(ant: &ClauseSet, goal: Id, truth: &TruthTable) -> Option<Trace> {
     None
 }
 
-fn reconstruct_proof(max_id: usize, ant: &ClauseSet, goal: Id, trace: &Trace) -> Proof {
+fn reconstruct_proof(max_id: usize, ant: &ClauseSet, goal: Var, trace: &Trace) -> Proof {
     #[derive(Debug, Clone)]
     struct ReconstructionStack {
         backrefs: Vec<Option<Backref>>,
-        backref_stack: Vec<(Id, Option<Backref>)>,
-        binding_stack: Vec<Id>,
+        backref_stack: Vec<(Var, Option<Backref>)>,
+        binding_stack: Vec<Var>,
     }
     #[derive(Debug, Clone, Copy)]
     struct RollbackPoint(usize, usize);
 
     impl ReconstructionStack {
-        fn get(&self, id: Id) -> bool {
-            self.backrefs[id.index()].is_some()
+        fn get(&self, id: Var) -> bool {
+            self.backrefs[id.0].is_some()
         }
 
-        fn set(&mut self, id: Id, backref: Backref) {
-            self.backref_stack.push((id, self.backrefs[id.index()]));
-            self.backrefs[id.index()] = Some(backref);
+        fn set(&mut self, id: Var, backref: Backref) {
+            self.backref_stack.push((id, self.backrefs[id.0]));
+            self.backrefs[id.0] = Some(backref);
         }
 
-        fn bind(&mut self, id: Id) {
+        fn bind(&mut self, id: Var) {
             let idx = self.binding_stack.len();
             self.set(id, Backref::Stack(idx));
             self.binding_stack.push(id);
@@ -120,14 +119,14 @@ fn reconstruct_proof(max_id: usize, ant: &ClauseSet, goal: Id, trace: &Trace) ->
 
         fn rollback(&mut self, pt: RollbackPoint) {
             for (id, backref) in self.backref_stack.drain(pt.0..) {
-                self.backrefs[id.index()] = backref;
+                self.backrefs[id.0] = backref;
             }
             self.binding_stack.truncate(pt.1);
         }
 
-        fn reconstruct(&self, ant: &ClauseSet, goal: Id, stack_aug: usize) -> Proof {
-            let br = self.backrefs[goal.index()]
-                .expect("bug: reconstruction failed: backref doesn't exist");
+        fn reconstruct(&self, ant: &ClauseSet, goal: Var, stack_aug: usize) -> Proof {
+            let br =
+                self.backrefs[goal.0].expect("bug: reconstruction failed: backref doesn't exist");
             match br {
                 Backref::Stack(idx) => Proof::Hypothesis(self.binding_stack.len() - 1 - idx),
                 Backref::Cl(cl_id) => match &ant[cl_id] {
@@ -157,7 +156,7 @@ fn reconstruct_proof(max_id: usize, ant: &ClauseSet, goal: Id, trace: &Trace) ->
         Cl(ClId),
     }
 
-    fn dfs(ant: &ClauseSet, goal: Id, stack: &mut ReconstructionStack, trace: &Trace) -> Proof {
+    fn dfs(ant: &ClauseSet, goal: Var, stack: &mut ReconstructionStack, trace: &Trace) -> Proof {
         loop {
             let mut updated = false;
             for (cl_id, clause) in ant.enumerate() {
@@ -238,19 +237,19 @@ enum Trace {
 struct TruthTable(BitVec);
 
 impl TruthTable {
-    fn new(idgen: &IdGen) -> Self {
-        Self(bitvec![0; idgen.max_id()])
+    fn new(vargen: &VarGen) -> Self {
+        Self(bitvec![0; vargen.max_id()])
     }
 
-    fn get(&self, id: Id) -> bool {
-        self.0[id.index()]
+    fn get(&self, id: Var) -> bool {
+        self.0[id.0]
     }
 
-    fn set(&mut self, id: Id, truth: bool) {
-        self.0.set(id.index(), truth);
+    fn set(&mut self, id: Var, truth: bool) {
+        self.0.set(id.0, truth);
     }
 
-    fn set_temp(&mut self, id: Id, truth: bool) -> TruthTableRewind<'_> {
+    fn set_temp(&mut self, id: Var, truth: bool) -> TruthTableRewind<'_> {
         let old_truth = self.get(id);
         self.set(id, truth);
         TruthTableRewind {
@@ -263,7 +262,7 @@ impl TruthTable {
 
 struct TruthTableRewind<'a> {
     table: &'a mut TruthTable,
-    id: Id,
+    id: Var,
     truth: bool,
 }
 
@@ -292,10 +291,10 @@ mod tests {
 
     #[test]
     fn test_solve_icnf1() {
-        let mut idgen = IdGen::new();
-        let id1 = idgen.fresh();
+        let mut vargen = VarGen::new();
+        let id1 = vargen.fresh();
         let provable = solve_icnf(
-            &idgen,
+            &vargen,
             &Icnf {
                 ant: ClauseSet { vec: vec![] },
                 suc: id1,
@@ -308,10 +307,10 @@ mod tests {
     fn test_solve_icnf2() {
         use Proof::*;
 
-        let mut idgen = IdGen::new();
-        let id1 = idgen.fresh();
+        let mut vargen = VarGen::new();
+        let id1 = vargen.fresh();
         let provable = solve_icnf(
-            &idgen,
+            &vargen,
             &Icnf {
                 ant: ClauseSet {
                     vec: vec![Clause::Conj(vec![], id1)],
@@ -324,11 +323,11 @@ mod tests {
 
     #[test]
     fn test_solve_icnf3() {
-        let mut idgen = IdGen::new();
-        let id1 = idgen.fresh();
-        let id2 = idgen.fresh();
+        let mut vargen = VarGen::new();
+        let id1 = vargen.fresh();
+        let id2 = vargen.fresh();
         let provable = solve_icnf(
-            &idgen,
+            &vargen,
             &Icnf {
                 ant: ClauseSet {
                     vec: vec![Clause::Conj(vec![], id1)],
@@ -343,11 +342,11 @@ mod tests {
     fn test_solve_icnf4() {
         use Proof::*;
 
-        let mut idgen = IdGen::new();
-        let id1 = idgen.fresh();
-        let id2 = idgen.fresh();
+        let mut vargen = VarGen::new();
+        let id1 = vargen.fresh();
+        let id2 = vargen.fresh();
         let provable = solve_icnf(
-            &idgen,
+            &vargen,
             &Icnf {
                 ant: ClauseSet {
                     vec: vec![Clause::Impl(id1, id1, id2)],
@@ -372,12 +371,12 @@ mod tests {
 
     #[test]
     fn test_solve_icnf5() {
-        let mut idgen = IdGen::new();
-        let id1 = idgen.fresh();
-        let id2 = idgen.fresh();
-        let id3 = idgen.fresh();
+        let mut vargen = VarGen::new();
+        let id1 = vargen.fresh();
+        let id2 = vargen.fresh();
+        let id3 = vargen.fresh();
         let provable = solve_icnf(
-            &idgen,
+            &vargen,
             &Icnf {
                 ant: ClauseSet {
                     vec: vec![Clause::Impl(id1, id2, id3)],
@@ -390,11 +389,11 @@ mod tests {
 
     #[test]
     fn test_solve_icnf6() {
-        let mut idgen = IdGen::new();
-        let id1 = idgen.fresh();
-        let id2 = idgen.fresh();
+        let mut vargen = VarGen::new();
+        let id1 = vargen.fresh();
+        let id2 = vargen.fresh();
         let provable = solve_icnf(
-            &idgen,
+            &vargen,
             &Icnf {
                 ant: ClauseSet {
                     vec: vec![Clause::Impl(id1, id2, id1)],
@@ -407,14 +406,14 @@ mod tests {
 
     #[test]
     fn test_solve_icnf7() {
-        let mut idgen = IdGen::new();
-        let id1 = idgen.fresh();
-        let id2 = idgen.fresh();
-        let id3 = idgen.fresh();
-        let id4 = idgen.fresh();
-        let id5 = idgen.fresh();
+        let mut vargen = VarGen::new();
+        let id1 = vargen.fresh();
+        let id2 = vargen.fresh();
+        let id3 = vargen.fresh();
+        let id4 = vargen.fresh();
+        let id5 = vargen.fresh();
         let provable = solve_icnf(
-            &idgen,
+            &vargen,
             &Icnf {
                 ant: ClauseSet {
                     vec: vec![
@@ -433,12 +432,12 @@ mod tests {
     fn test_solve_icnf8() {
         use Proof::*;
 
-        let mut idgen = IdGen::new();
-        let id1 = idgen.fresh();
-        let id2 = idgen.fresh();
-        let id3 = idgen.fresh();
+        let mut vargen = VarGen::new();
+        let id1 = vargen.fresh();
+        let id2 = vargen.fresh();
+        let id3 = vargen.fresh();
         let provable = solve_icnf(
-            &idgen,
+            &vargen,
             &Icnf {
                 ant: ClauseSet {
                     vec: vec![Clause::Disj(vec![id1], vec![]), Clause::Impl(id1, id2, id3)],
@@ -463,11 +462,11 @@ mod tests {
 
     #[test]
     fn test_solve_icnf9() {
-        let mut idgen = IdGen::new();
-        let id1 = idgen.fresh();
-        let id2 = idgen.fresh();
+        let mut vargen = VarGen::new();
+        let id1 = vargen.fresh();
+        let id2 = vargen.fresh();
         let provable = solve_icnf(
-            &idgen,
+            &vargen,
             &Icnf {
                 ant: ClauseSet {
                     vec: vec![Clause::Disj(vec![], vec![id1, id2])],
@@ -482,10 +481,10 @@ mod tests {
     fn test_solve_icnf10() {
         use Proof::*;
 
-        let mut idgen = IdGen::new();
-        let id1 = idgen.fresh();
+        let mut vargen = VarGen::new();
+        let id1 = vargen.fresh();
         let provable = solve_icnf(
-            &idgen,
+            &vargen,
             &Icnf {
                 ant: ClauseSet {
                     vec: vec![Clause::Disj(vec![], vec![id1, id1])],
@@ -507,12 +506,12 @@ mod tests {
     fn test_solve_icnf11() {
         use Proof::*;
 
-        let mut idgen = IdGen::new();
-        let id1 = idgen.fresh();
-        let id2 = idgen.fresh();
-        let id3 = idgen.fresh();
+        let mut vargen = VarGen::new();
+        let id1 = vargen.fresh();
+        let id2 = vargen.fresh();
+        let id3 = vargen.fresh();
         let provable = solve_icnf(
-            &idgen,
+            &vargen,
             &Icnf {
                 ant: ClauseSet {
                     vec: vec![
@@ -539,13 +538,13 @@ mod tests {
 
     #[test]
     fn test_solve_icnf12() {
-        let mut idgen = IdGen::new();
-        let id1 = idgen.fresh();
-        let id2 = idgen.fresh();
-        let id3 = idgen.fresh();
-        let id4 = idgen.fresh();
+        let mut vargen = VarGen::new();
+        let id1 = vargen.fresh();
+        let id2 = vargen.fresh();
+        let id3 = vargen.fresh();
+        let id4 = vargen.fresh();
         let provable = solve_icnf(
-            &idgen,
+            &vargen,
             &Icnf {
                 ant: ClauseSet {
                     vec: vec![
@@ -564,15 +563,15 @@ mod tests {
     fn test_solve_icnf13() {
         use Proof::*;
 
-        let mut idgen = IdGen::new();
-        let id1 = idgen.fresh();
-        let id2 = idgen.fresh();
-        let id3 = idgen.fresh();
-        let id4 = idgen.fresh();
-        let id5 = idgen.fresh();
-        let id6 = idgen.fresh();
+        let mut vargen = VarGen::new();
+        let id1 = vargen.fresh();
+        let id2 = vargen.fresh();
+        let id3 = vargen.fresh();
+        let id4 = vargen.fresh();
+        let id5 = vargen.fresh();
+        let id6 = vargen.fresh();
         let provable = solve_icnf(
-            &idgen,
+            &vargen,
             &Icnf {
                 ant: ClauseSet {
                     vec: vec![
