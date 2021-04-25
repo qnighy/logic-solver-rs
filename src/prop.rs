@@ -98,7 +98,7 @@ pub struct IdGen {
 
 impl IdGen {
     pub fn new() -> Self {
-        Self { next_id: 1 }
+        Self { next_id: 0 }
     }
 
     pub fn fresh(&mut self) -> Id {
@@ -131,7 +131,7 @@ mod tests {
         let mut idgen = IdGen::new();
         let mut env = Env::new();
         let prop = Prop::from_ast(&mut idgen, &mut env, &PropAst::Atom(S("A")));
-        assert_eq!(prop, Prop::Atom(Id(1)));
+        assert_eq!(prop, Prop::Atom(Id(0)));
     }
 
     #[test]
@@ -148,7 +148,7 @@ mod tests {
         );
         assert_eq!(
             prop,
-            Prop::Impl(Box::new(Prop::Atom(Id(1))), Box::new(Prop::Atom(Id(2))))
+            Prop::Impl(Box::new(Prop::Atom(Id(0))), Box::new(Prop::Atom(Id(1))))
         );
     }
 
@@ -166,7 +166,7 @@ mod tests {
         );
         assert_eq!(
             prop,
-            Prop::Impl(Box::new(Prop::Atom(Id(1))), Box::new(Prop::Atom(Id(1))))
+            Prop::Impl(Box::new(Prop::Atom(Id(0))), Box::new(Prop::Atom(Id(0))))
         );
     }
 

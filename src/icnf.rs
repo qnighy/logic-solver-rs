@@ -143,10 +143,10 @@ mod tests {
             (
                 Icnf {
                     ant: vec![],
-                    suc: Id(1)
+                    suc: Id(0)
                 },
                 Decomposition {
-                    map: hashmap! {Id(1) => ShallowProp::Atom},
+                    map: hashmap! {Id(0) => ShallowProp::Atom},
                 }
             )
         );
@@ -162,13 +162,13 @@ mod tests {
             result,
             (
                 Icnf {
-                    ant: vec![Clause::Impl(Id(1), Id(1), Id(2)),],
-                    suc: Id(2)
+                    ant: vec![Clause::Impl(Id(0), Id(0), Id(1)),],
+                    suc: Id(1)
                 },
                 Decomposition {
                     map: hashmap! {
-                        Id(1) => ShallowProp::Atom,
-                        Id(2) => ShallowProp::Impl(Id(1), Id(1)),
+                        Id(0) => ShallowProp::Atom,
+                        Id(1) => ShallowProp::Impl(Id(0), Id(0)),
                     },
                 }
             )
@@ -190,20 +190,20 @@ mod tests {
             (
                 Icnf {
                     ant: vec![
-                        Clause::Disj(vec![Id(3)], vec![Id(1), Id(2)]),
-                        Clause::Conj(vec![Id(2)], Id(4)),
-                        Clause::Conj(vec![Id(1)], Id(4)),
-                        Clause::Impl(Id(3), Id(4), Id(5)),
+                        Clause::Disj(vec![Id(2)], vec![Id(0), Id(1)]),
+                        Clause::Conj(vec![Id(1)], Id(3)),
+                        Clause::Conj(vec![Id(0)], Id(3)),
+                        Clause::Impl(Id(2), Id(3), Id(4)),
                     ],
-                    suc: Id(5),
+                    suc: Id(4),
                 },
                 Decomposition {
                     map: hashmap! {
-                        Id(4) => ShallowProp::Disj(vec![Id(2), Id(1)]),
-                        Id(2) => ShallowProp::Atom,
+                        Id(3) => ShallowProp::Disj(vec![Id(1), Id(0)]),
                         Id(1) => ShallowProp::Atom,
-                        Id(3) => ShallowProp::Disj(vec![Id(1), Id(2)]),
-                        Id(5) => ShallowProp::Impl(Id(3), Id(4)),
+                        Id(0) => ShallowProp::Atom,
+                        Id(2) => ShallowProp::Disj(vec![Id(0), Id(1)]),
+                        Id(4) => ShallowProp::Impl(Id(2), Id(3)),
                     },
                 },
             )
@@ -225,20 +225,20 @@ mod tests {
             (
                 Icnf {
                     ant: vec![
-                        Clause::Conj(vec![Id(3)], Id(1)),
-                        Clause::Conj(vec![Id(3)], Id(2)),
-                        Clause::Conj(vec![Id(2), Id(1)], Id(4)),
-                        Clause::Impl(Id(3), Id(4), Id(5)),
+                        Clause::Conj(vec![Id(2)], Id(0)),
+                        Clause::Conj(vec![Id(2)], Id(1)),
+                        Clause::Conj(vec![Id(1), Id(0)], Id(3)),
+                        Clause::Impl(Id(2), Id(3), Id(4)),
                     ],
-                    suc: Id(5),
+                    suc: Id(4),
                 },
                 Decomposition {
                     map: hashmap![
-                        Id(4) => ShallowProp::Conj(vec![Id(2), Id(1)]),
-                        Id(2) => ShallowProp::Atom,
+                        Id(3) => ShallowProp::Conj(vec![Id(1), Id(0)]),
                         Id(1) => ShallowProp::Atom,
-                        Id(3) => ShallowProp::Conj(vec![Id(1), Id(2)]),
-                        Id(5) => ShallowProp::Impl(Id(3), Id(4)),
+                        Id(0) => ShallowProp::Atom,
+                        Id(2) => ShallowProp::Conj(vec![Id(0), Id(1)]),
+                        Id(4) => ShallowProp::Impl(Id(2), Id(3)),
                     ],
                 },
             )
