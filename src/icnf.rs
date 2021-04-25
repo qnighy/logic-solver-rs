@@ -127,6 +127,21 @@ pub enum ShallowProp {
     Disj(Vec<Id>),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ClId(pub usize);
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Proof {
+    /// Use the k-th hypothesis in the global index (not de Brujin)
+    Hypothesis(usize),
+    /// `clX p1 p2 ... pN`
+    ApplyConj(ClId, Vec<Proof>),
+    /// `match (clX p1 p2 ... pN) with hyp1 => q1 | hyp2 => q2 | ... | hypM => qM end`
+    ApplyDisj(ClId, Vec<Proof>, Vec<Proof>),
+    /// `let concl = clX (hyp => p1) in p2`
+    ApplyImpl(ClId, Box<Proof>, Box<Proof>),
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
