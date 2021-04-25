@@ -14,8 +14,8 @@ jobs:
         with:
           toolchain: ${{ matrix.rust }}
           override: true
-      - run: cargo check --frozen --all
-      - run: cargo test --frozen --all
+      - run: cargo check --locked --all
+      - run: cargo test --locked --all
       - name: rustfmt
         run: |
           rustup component add rustfmt
