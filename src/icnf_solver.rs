@@ -1,7 +1,7 @@
 use bitvec::prelude::*;
 use bitvec::vec::BitVec;
 
-use crate::icnf::{ClId, Clause, Icnf, Proof};
+use crate::icnf::{ClId, Clause, ClauseSet, Icnf, Proof};
 use crate::prop::{Id, IdGen};
 
 pub fn solve_icnf(idgen: &IdGen, icnf: &Icnf) -> Option<Proof> {
@@ -15,7 +15,7 @@ pub fn solve_icnf(idgen: &IdGen, icnf: &Icnf) -> Option<Proof> {
     ))
 }
 
-fn solve_dfs(ant: &[Clause], goal: Id, truth: &TruthTable) -> Option<Trace> {
+fn solve_dfs(ant: &ClauseSet, goal: Id, truth: &TruthTable) -> Option<Trace> {
     let mut truth = truth.clone();
     loop {
         let mut updated = false;
@@ -40,8 +40,7 @@ fn solve_dfs(ant: &[Clause], goal: Id, truth: &TruthTable) -> Option<Trace> {
     if truth.get(goal) {
         return Some(Trace::Trivial);
     }
-    for (i, clause) in ant.iter().enumerate() {
-        let cl_id = ClId(i);
+    for (cl_id, clause) in ant.enumerate() {
         match clause {
             Clause::Conj(..) => {
                 // do nothing
@@ -89,7 +88,7 @@ fn solve_dfs(ant: &[Clause], goal: Id, truth: &TruthTable) -> Option<Trace> {
     None
 }
 
-fn reconstruct_proof(max_id: usize, ant: &[Clause], goal: Id, trace: &Trace) -> Proof {
+fn reconstruct_proof(max_id: usize, ant: &ClauseSet, goal: Id, trace: &Trace) -> Proof {
     #[derive(Debug, Clone)]
     struct ReconstructionStack {
         backrefs: Vec<Option<Backref>>,
@@ -126,12 +125,12 @@ fn reconstruct_proof(max_id: usize, ant: &[Clause], goal: Id, trace: &Trace) -> 
             self.binding_stack.truncate(pt.1);
         }
 
-        fn reconstruct(&self, ant: &[Clause], goal: Id, stack_aug: usize) -> Proof {
+        fn reconstruct(&self, ant: &ClauseSet, goal: Id, stack_aug: usize) -> Proof {
             let br = self.backrefs[goal.index()]
                 .expect("bug: reconstruction failed: backref doesn't exist");
             match br {
                 Backref::Stack(idx) => Proof::Hypothesis(self.binding_stack.len() - 1 - idx),
-                Backref::Cl(cl_id) => match &ant[cl_id.0] {
+                Backref::Cl(cl_id) => match &ant[cl_id] {
                     Clause::Conj(lhs, _) => Proof::ApplyConj(
                         cl_id,
                         lhs.iter()
@@ -158,11 +157,10 @@ fn reconstruct_proof(max_id: usize, ant: &[Clause], goal: Id, trace: &Trace) -> 
         Cl(ClId),
     }
 
-    fn dfs(ant: &[Clause], goal: Id, stack: &mut ReconstructionStack, trace: &Trace) -> Proof {
+    fn dfs(ant: &ClauseSet, goal: Id, stack: &mut ReconstructionStack, trace: &Trace) -> Proof {
         loop {
             let mut updated = false;
-            for (i, clause) in ant.iter().enumerate() {
-                let cl_id = ClId(i);
+            for (cl_id, clause) in ant.enumerate() {
                 if let Clause::Conj(lhs, rhs) = clause {
                     if !stack.get(*rhs) && lhs.iter().all(|&hyp| stack.get(hyp)) {
                         stack.set(*rhs, Backref::Cl(cl_id));
@@ -182,7 +180,7 @@ fn reconstruct_proof(max_id: usize, ant: &[Clause], goal: Id, trace: &Trace) -> 
         match trace {
             Trace::Trivial => stack.reconstruct(ant, goal, 0),
             Trace::Impl(cl_id, lhs, rhs) => {
-                if let Clause::Impl(a, b, _) = &ant[cl_id.0] {
+                if let Clause::Impl(a, b, _) = &ant[*cl_id] {
                     let pt = stack.remember();
                     stack.bind(*a);
                     let lhs = dfs(ant, *b, stack, lhs);
@@ -196,7 +194,7 @@ fn reconstruct_proof(max_id: usize, ant: &[Clause], goal: Id, trace: &Trace) -> 
                 }
             }
             Trace::Disj(cl_id, branches) => {
-                if let Clause::Disj(lhs, rhs) = &ant[cl_id.0] {
+                if let Clause::Disj(lhs, rhs) = &ant[*cl_id] {
                     let requirements = lhs
                         .iter()
                         .map(|&req| stack.reconstruct(ant, req, 0))
@@ -299,7 +297,7 @@ mod tests {
         let provable = solve_icnf(
             &idgen,
             &Icnf {
-                ant: vec![],
+                ant: ClauseSet { vec: vec![] },
                 suc: id1,
             },
         );
@@ -315,7 +313,9 @@ mod tests {
         let provable = solve_icnf(
             &idgen,
             &Icnf {
-                ant: vec![Clause::Conj(vec![], id1)],
+                ant: ClauseSet {
+                    vec: vec![Clause::Conj(vec![], id1)],
+                },
                 suc: id1,
             },
         );
@@ -330,7 +330,9 @@ mod tests {
         let provable = solve_icnf(
             &idgen,
             &Icnf {
-                ant: vec![Clause::Conj(vec![], id1)],
+                ant: ClauseSet {
+                    vec: vec![Clause::Conj(vec![], id1)],
+                },
                 suc: id2,
             },
         );
@@ -347,7 +349,9 @@ mod tests {
         let provable = solve_icnf(
             &idgen,
             &Icnf {
-                ant: vec![Clause::Impl(id1, id1, id2)],
+                ant: ClauseSet {
+                    vec: vec![Clause::Impl(id1, id1, id2)],
+                },
                 suc: id2,
             },
         );
@@ -375,7 +379,9 @@ mod tests {
         let provable = solve_icnf(
             &idgen,
             &Icnf {
-                ant: vec![Clause::Impl(id1, id2, id3)],
+                ant: ClauseSet {
+                    vec: vec![Clause::Impl(id1, id2, id3)],
+                },
                 suc: id3,
             },
         );
@@ -390,7 +396,9 @@ mod tests {
         let provable = solve_icnf(
             &idgen,
             &Icnf {
-                ant: vec![Clause::Impl(id1, id2, id1)],
+                ant: ClauseSet {
+                    vec: vec![Clause::Impl(id1, id2, id1)],
+                },
                 suc: id1,
             },
         );
@@ -408,11 +416,13 @@ mod tests {
         let provable = solve_icnf(
             &idgen,
             &Icnf {
-                ant: vec![
-                    Clause::Impl(id1, id2, id3),
-                    Clause::Conj(vec![id4, id3], id1),
-                    Clause::Impl(id4, id1, id5),
-                ],
+                ant: ClauseSet {
+                    vec: vec![
+                        Clause::Impl(id1, id2, id3),
+                        Clause::Conj(vec![id4, id3], id1),
+                        Clause::Impl(id4, id1, id5),
+                    ],
+                },
                 suc: id5,
             },
         );
@@ -430,7 +440,9 @@ mod tests {
         let provable = solve_icnf(
             &idgen,
             &Icnf {
-                ant: vec![Clause::Disj(vec![id1], vec![]), Clause::Impl(id1, id2, id3)],
+                ant: ClauseSet {
+                    vec: vec![Clause::Disj(vec![id1], vec![]), Clause::Impl(id1, id2, id3)],
+                },
                 suc: id3,
             },
         );
@@ -457,7 +469,9 @@ mod tests {
         let provable = solve_icnf(
             &idgen,
             &Icnf {
-                ant: vec![Clause::Disj(vec![], vec![id1, id2])],
+                ant: ClauseSet {
+                    vec: vec![Clause::Disj(vec![], vec![id1, id2])],
+                },
                 suc: id2,
             },
         );
@@ -473,7 +487,9 @@ mod tests {
         let provable = solve_icnf(
             &idgen,
             &Icnf {
-                ant: vec![Clause::Disj(vec![], vec![id1, id1])],
+                ant: ClauseSet {
+                    vec: vec![Clause::Disj(vec![], vec![id1, id1])],
+                },
                 suc: id1,
             },
         );
@@ -498,11 +514,13 @@ mod tests {
         let provable = solve_icnf(
             &idgen,
             &Icnf {
-                ant: vec![
-                    Clause::Disj(vec![], vec![id1, id2]),
-                    Clause::Conj(vec![id2], id3),
-                    Clause::Conj(vec![id1], id3),
-                ],
+                ant: ClauseSet {
+                    vec: vec![
+                        Clause::Disj(vec![], vec![id1, id2]),
+                        Clause::Conj(vec![id2], id3),
+                        Clause::Conj(vec![id1], id3),
+                    ],
+                },
                 suc: id3,
             },
         );
@@ -529,11 +547,13 @@ mod tests {
         let provable = solve_icnf(
             &idgen,
             &Icnf {
-                ant: vec![
-                    Clause::Impl(id1, id2, id3),
-                    Clause::Conj(vec![id1], id4),
-                    Clause::Conj(vec![id3], id4),
-                ],
+                ant: ClauseSet {
+                    vec: vec![
+                        Clause::Impl(id1, id2, id3),
+                        Clause::Conj(vec![id1], id4),
+                        Clause::Conj(vec![id3], id4),
+                    ],
+                },
                 suc: id4,
             },
         );
@@ -554,14 +574,16 @@ mod tests {
         let provable = solve_icnf(
             &idgen,
             &Icnf {
-                ant: vec![
-                    Clause::Disj(vec![id2], vec![]),
-                    Clause::Impl(id1, id2, id3),
-                    Clause::Conj(vec![id1], id4),
-                    Clause::Conj(vec![id3], id4),
-                    Clause::Conj(vec![id5, id4], id2),
-                    Clause::Impl(id5, id2, id6),
-                ],
+                ant: ClauseSet {
+                    vec: vec![
+                        Clause::Disj(vec![id2], vec![]),
+                        Clause::Impl(id1, id2, id3),
+                        Clause::Conj(vec![id1], id4),
+                        Clause::Conj(vec![id3], id4),
+                        Clause::Conj(vec![id5, id4], id2),
+                        Clause::Impl(id5, id2, id6),
+                    ],
+                },
                 suc: id6,
             },
         );

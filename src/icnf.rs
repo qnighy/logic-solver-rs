@@ -22,14 +22,14 @@ use crate::prop::{Id, IdGen, Prop};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Icnf {
     /// Hypotheses
-    pub ant: Vec<Clause>,
+    pub ant: ClauseSet,
     /// Goal
     pub suc: Id,
 }
 
 impl Icnf {
     pub fn from_prop(idgen: &mut IdGen, prop: &Prop) -> (Icnf, Decomposition) {
-        let mut ant = vec![];
+        let mut ant = ClauseSet::default();
         let mut decomp = Decomposition {
             map: HashMap::new(),
         };
@@ -39,7 +39,7 @@ impl Icnf {
     fn from_prop_with(
         idgen: &mut IdGen,
         decomp: &mut Decomposition,
-        ant: &mut Vec<Clause>,
+        ant: &mut ClauseSet,
         prop: &Prop,
         positive: bool,
         negative: bool,
@@ -130,6 +130,44 @@ pub enum ShallowProp {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ClId(pub usize);
 
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct ClauseSet {
+    pub vec: Vec<Clause>,
+}
+
+impl ClauseSet {
+    pub fn push(&mut self, clause: Clause) -> ClId {
+        let id = ClId(self.vec.len());
+        self.vec.push(clause);
+        id
+    }
+
+    pub fn enumerate<'a>(&'a self) -> impl Iterator<Item = (ClId, &'a Clause)> {
+        self.vec.iter().enumerate().map(|(i, cl)| (ClId(i), cl))
+    }
+}
+
+impl<'a> IntoIterator for &'a ClauseSet {
+    type Item = &'a Clause;
+    type IntoIter = std::slice::Iter<'a, Clause>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.vec.iter()
+    }
+}
+
+impl std::ops::Index<ClId> for ClauseSet {
+    type Output = Clause;
+    fn index(&self, idx: ClId) -> &Self::Output {
+        &self.vec[idx.0]
+    }
+}
+
+impl std::ops::IndexMut<ClId> for ClauseSet {
+    fn index_mut(&mut self, idx: ClId) -> &mut Self::Output {
+        &mut self.vec[idx.0]
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Proof {
     /// Use the k-th hypothesis in the global index (not de Brujin)
@@ -157,7 +195,7 @@ mod tests {
             result,
             (
                 Icnf {
-                    ant: vec![],
+                    ant: ClauseSet { vec: vec![] },
                     suc: Id(0)
                 },
                 Decomposition {
@@ -177,7 +215,9 @@ mod tests {
             result,
             (
                 Icnf {
-                    ant: vec![Clause::Impl(Id(0), Id(0), Id(1)),],
+                    ant: ClauseSet {
+                        vec: vec![Clause::Impl(Id(0), Id(0), Id(1)),]
+                    },
                     suc: Id(1)
                 },
                 Decomposition {
@@ -204,12 +244,14 @@ mod tests {
             result,
             (
                 Icnf {
-                    ant: vec![
-                        Clause::Disj(vec![Id(2)], vec![Id(0), Id(1)]),
-                        Clause::Conj(vec![Id(1)], Id(3)),
-                        Clause::Conj(vec![Id(0)], Id(3)),
-                        Clause::Impl(Id(2), Id(3), Id(4)),
-                    ],
+                    ant: ClauseSet {
+                        vec: vec![
+                            Clause::Disj(vec![Id(2)], vec![Id(0), Id(1)]),
+                            Clause::Conj(vec![Id(1)], Id(3)),
+                            Clause::Conj(vec![Id(0)], Id(3)),
+                            Clause::Impl(Id(2), Id(3), Id(4)),
+                        ]
+                    },
                     suc: Id(4),
                 },
                 Decomposition {
@@ -239,12 +281,14 @@ mod tests {
             result,
             (
                 Icnf {
-                    ant: vec![
-                        Clause::Conj(vec![Id(2)], Id(0)),
-                        Clause::Conj(vec![Id(2)], Id(1)),
-                        Clause::Conj(vec![Id(1), Id(0)], Id(3)),
-                        Clause::Impl(Id(2), Id(3), Id(4)),
-                    ],
+                    ant: ClauseSet {
+                        vec: vec![
+                            Clause::Conj(vec![Id(2)], Id(0)),
+                            Clause::Conj(vec![Id(2)], Id(1)),
+                            Clause::Conj(vec![Id(1), Id(0)], Id(3)),
+                            Clause::Impl(Id(2), Id(3), Id(4)),
+                        ]
+                    },
                     suc: Id(4),
                 },
                 Decomposition {
