@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use crate::icnf::{Clause, ClauseSet, Icnf, Var, VarGen};
+use crate::ipc::icnf::{Clause, ClauseSet, Icnf, Var, VarGen};
 use crate::prop::{Id, Prop};
 
 impl Icnf {

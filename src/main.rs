@@ -1,7 +1,5 @@
 pub mod ast;
-pub mod icnf;
-pub mod icnf_decomp;
-pub mod icnf_solver;
+pub mod ipc;
 pub mod parser;
 pub mod prop;
 pub mod tokenizer;

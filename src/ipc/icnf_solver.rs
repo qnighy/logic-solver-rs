@@ -1,7 +1,7 @@
 use bitvec::prelude::*;
 use bitvec::vec::BitVec;
 
-use crate::icnf::{ClId, Clause, ClauseSet, Icnf, Proof, Var, VarGen};
+use crate::ipc::icnf::{ClId, Clause, ClauseSet, Icnf, Proof, Var, VarGen};
 
 pub fn solve_icnf(vargen: &VarGen, icnf: &Icnf) -> Option<Proof> {
     let truth = TruthTable::new(vargen);
