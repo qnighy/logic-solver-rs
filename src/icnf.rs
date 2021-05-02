@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::prop::{Id, Prop};
 
@@ -28,81 +28,50 @@ pub struct Icnf {
 }
 
 impl Icnf {
-    pub fn from_prop(vargen: &mut VarGen, prop: &Prop) -> (Icnf, Decomposition) {
+    pub fn from_prop(vargen: &mut VarGen, prop: &Prop) -> (Icnf, PropMap) {
+        let mut prop_map = PropMap::default();
+        let prop_var = prop_map.insert_prop(vargen, prop);
+
+        let mut pol_map = PolarityMap::default();
+        pol_map.mark_polarity(&prop_map, prop_var, true);
+
         let mut ant = ClauseSet::default();
-        let mut decomp = Decomposition {
-            id_map: HashMap::new(),
-            map: HashMap::new(),
-        };
-        let suc = Self::from_prop_with(vargen, &mut decomp, &mut ant, prop, true, false);
-        (Self { ant, suc }, decomp)
-    }
-    fn from_prop_with(
-        vargen: &mut VarGen,
-        decomp: &mut Decomposition,
-        ant: &mut ClauseSet,
-        prop: &Prop,
-        positive: bool,
-        negative: bool,
-    ) -> Var {
-        match prop {
-            Prop::Atom(id) => {
-                let var = *decomp.id_map.entry(*id).or_insert_with(|| vargen.fresh());
-                decomp.map.insert(var, ShallowProp::Atom(*id));
-                var
-            }
-            Prop::Impl(lhs, rhs) => {
-                let lhs = Self::from_prop_with(vargen, decomp, ant, lhs, negative, positive);
-                let rhs = Self::from_prop_with(vargen, decomp, ant, rhs, positive, negative);
-                let var = vargen.fresh();
-                if positive {
-                    ant.push(Clause::Impl(lhs, rhs, var));
-                }
-                if negative {
-                    ant.push(Clause::Conj(vec![var, lhs], rhs));
-                }
-                decomp.map.insert(var, ShallowProp::Impl(lhs, rhs));
-                var
-            }
-            Prop::Conj(children) => {
-                let children = children
-                    .iter()
-                    .map(|child| {
-                        Self::from_prop_with(vargen, decomp, ant, child, positive, negative)
-                    })
-                    .collect::<Vec<_>>();
-                let var = vargen.fresh();
-                if positive {
-                    ant.push(Clause::Conj(children.clone(), var));
-                }
-                if negative {
-                    for &child in &children {
-                        ant.push(Clause::Conj(vec![var], child));
+        for (v, sp) in prop_map.iter() {
+            let (pos, neg) = pol_map.polarity(v);
+            match sp {
+                ShallowProp::Atom(..) => {}
+                ShallowProp::Impl(lhs, rhs) => {
+                    if pos {
+                        ant.push(Clause::Impl(*lhs, *rhs, v));
+                    }
+                    if neg {
+                        ant.push(Clause::Conj(vec![v, *lhs], *rhs));
                     }
                 }
-                decomp.map.insert(var, ShallowProp::Conj(children));
-                var
-            }
-            Prop::Disj(children) => {
-                let children = children
-                    .iter()
-                    .map(|child| {
-                        Self::from_prop_with(vargen, decomp, ant, child, positive, negative)
-                    })
-                    .collect::<Vec<_>>();
-                let var = vargen.fresh();
-                if positive {
-                    for &child in &children {
-                        ant.push(Clause::Conj(vec![child], var));
+                ShallowProp::Conj(children) => {
+                    if pos {
+                        ant.push(Clause::Conj(children.clone(), v));
+                    }
+                    if neg {
+                        for &child in children {
+                            ant.push(Clause::Conj(vec![v], child));
+                        }
                     }
                 }
-                if negative {
-                    ant.push(Clause::Disj(vec![var], children.clone()));
+                ShallowProp::Disj(children) => {
+                    if pos {
+                        for &child in children {
+                            ant.push(Clause::Conj(vec![child], v));
+                        }
+                    }
+                    if neg {
+                        ant.push(Clause::Disj(vec![v], children.clone()));
+                    }
                 }
-                decomp.map.insert(var, ShallowProp::Disj(children));
-                var
             }
         }
+
+        (Self { ant, suc: prop_var }, prop_map)
     }
 }
 
@@ -116,13 +85,108 @@ pub enum Clause {
     Impl(Var, Var, Var),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Decomposition {
-    id_map: HashMap<Id, Var>,
-    map: HashMap<Var, ShallowProp>,
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct PropMap {
+    rev_vars: HashMap<ShallowProp, Var>,
+    vars: Vec<Option<ShallowProp>>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+impl PropMap {
+    pub fn iter<'a>(&'a self) -> impl Iterator<Item = (Var, &'a ShallowProp)> {
+        self.vars
+            .iter()
+            .enumerate()
+            .filter_map(|(i, sp)| Some((Var(i), sp.as_ref()?)))
+    }
+    pub fn get(&self, v: Var) -> Option<&ShallowProp> {
+        self.vars.get(v.0).and_then(|sp| sp.as_ref())
+    }
+    pub fn insert_prop(&mut self, vargen: &mut VarGen, prop: &Prop) -> Var {
+        let sp = match prop {
+            Prop::Atom(id) => ShallowProp::Atom(*id),
+            Prop::Impl(lhs, rhs) => {
+                let lhs = self.insert_prop(vargen, lhs);
+                let rhs = self.insert_prop(vargen, rhs);
+                ShallowProp::Impl(lhs, rhs)
+            }
+            Prop::Conj(children) => {
+                let children = children
+                    .iter()
+                    .map(|child| self.insert_prop(vargen, child))
+                    .collect::<Vec<_>>();
+                ShallowProp::Conj(children)
+            }
+            Prop::Disj(children) => {
+                let children = children
+                    .iter()
+                    .map(|child| self.insert_prop(vargen, child))
+                    .collect::<Vec<_>>();
+                ShallowProp::Disj(children)
+            }
+        };
+        self.shallow_insert_prop(vargen, &sp)
+    }
+    pub fn shallow_insert_prop(&mut self, vargen: &mut VarGen, sp: &ShallowProp) -> Var {
+        if let Some(&v) = self.rev_vars.get(sp) {
+            v
+        } else {
+            let v = vargen.fresh();
+            self.rev_vars.insert(sp.clone(), v);
+            while self.vars.len() <= v.0 {
+                self.vars.push(None);
+            }
+            self.vars[v.0] = Some(sp.clone());
+            v
+        }
+    }
+
+    pub fn to_map(&self) -> HashMap<Var, ShallowProp> {
+        self.iter().map(|(v, sp)| (v, sp.clone())).collect()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+struct PolarityMap {
+    pos: HashSet<Var>,
+    neg: HashSet<Var>,
+}
+
+impl PolarityMap {
+    pub fn polarity(&self, v: Var) -> (bool, bool) {
+        (self.pos.contains(&v), self.neg.contains(&v))
+    }
+
+    pub fn mark_polarity(&mut self, decomp: &PropMap, v: Var, positive: bool) {
+        let polset = if positive {
+            &mut self.pos
+        } else {
+            &mut self.neg
+        };
+        if polset.contains(&v) {
+            return;
+        }
+        polset.insert(v);
+        match decomp.get(v).unwrap() {
+            ShallowProp::Atom(..) => {}
+            ShallowProp::Impl(lhs, rhs) => {
+                self.mark_polarity(decomp, *lhs, !positive);
+                self.mark_polarity(decomp, *rhs, positive);
+            }
+            ShallowProp::Conj(children) => {
+                for &child in children {
+                    self.mark_polarity(decomp, child, positive);
+                }
+            }
+            ShallowProp::Disj(children) => {
+                for &child in children {
+                    self.mark_polarity(decomp, child, positive);
+                }
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ShallowProp {
     Atom(Id),
     Impl(Var, Var),
@@ -218,19 +282,19 @@ mod tests {
         let mut idgen = IdGen::new();
         let id1 = idgen.fresh();
         let prop = Prop::Atom(id1);
-        let result = Icnf::from_prop(&mut VarGen::new(), &prop);
+        let (icnf, prop_map) = Icnf::from_prop(&mut VarGen::new(), &prop);
         assert_eq!(
-            result,
-            (
-                Icnf {
-                    ant: ClauseSet { vec: vec![] },
-                    suc: Var(0)
-                },
-                Decomposition {
-                    id_map: hashmap![Id(0) => Var(0)],
-                    map: hashmap! {Var(0) => ShallowProp::Atom(Id(0))},
-                }
-            )
+            icnf,
+            Icnf {
+                ant: ClauseSet { vec: vec![] },
+                suc: Var(0)
+            },
+        );
+        assert_eq!(
+            prop_map.to_map(),
+            hashmap![
+                Var(0) => ShallowProp::Atom(Id(0)),
+            ]
         );
     }
 
@@ -239,24 +303,22 @@ mod tests {
         let mut idgen = IdGen::new();
         let id1 = idgen.fresh();
         let prop = Prop::Impl(Box::new(Prop::Atom(id1)), Box::new(Prop::Atom(id1)));
-        let result = Icnf::from_prop(&mut VarGen::new(), &prop);
+        let (icnf, prop_map) = Icnf::from_prop(&mut VarGen::new(), &prop);
         assert_eq!(
-            result,
-            (
-                Icnf {
-                    ant: ClauseSet {
-                        vec: vec![Clause::Impl(Var(0), Var(0), Var(1)),]
-                    },
-                    suc: Var(1)
+            icnf,
+            Icnf {
+                ant: ClauseSet {
+                    vec: vec![Clause::Impl(Var(0), Var(0), Var(1)),]
                 },
-                Decomposition {
-                    id_map: hashmap![Id(0) => Var(0)],
-                    map: hashmap! {
-                        Var(0) => ShallowProp::Atom(Id(0)),
-                        Var(1) => ShallowProp::Impl(Var(0), Var(0)),
-                    },
-                }
-            )
+                suc: Var(1)
+            },
+        );
+        assert_eq!(
+            prop_map.to_map(),
+            hashmap![
+                Var(0) => ShallowProp::Atom(Id(0)),
+                Var(1) => ShallowProp::Impl(Var(0), Var(0)),
+            ],
         );
     }
 
@@ -269,32 +331,30 @@ mod tests {
             Box::new(Prop::Disj(vec![Prop::Atom(id1), Prop::Atom(id2)])),
             Box::new(Prop::Disj(vec![Prop::Atom(id2), Prop::Atom(id1)])),
         );
-        let result = Icnf::from_prop(&mut VarGen::new(), &prop);
+        let (icnf, prop_map) = Icnf::from_prop(&mut VarGen::new(), &prop);
         assert_eq!(
-            result,
-            (
-                Icnf {
-                    ant: ClauseSet {
-                        vec: vec![
-                            Clause::Disj(vec![Var(2)], vec![Var(0), Var(1)]),
-                            Clause::Conj(vec![Var(1)], Var(3)),
-                            Clause::Conj(vec![Var(0)], Var(3)),
-                            Clause::Impl(Var(2), Var(3), Var(4)),
-                        ]
-                    },
-                    suc: Var(4),
+            icnf,
+            Icnf {
+                ant: ClauseSet {
+                    vec: vec![
+                        Clause::Disj(vec![Var(2)], vec![Var(0), Var(1)]),
+                        Clause::Conj(vec![Var(1)], Var(3)),
+                        Clause::Conj(vec![Var(0)], Var(3)),
+                        Clause::Impl(Var(2), Var(3), Var(4)),
+                    ]
                 },
-                Decomposition {
-                    id_map: hashmap![Id(0) => Var(0), Id(1) => Var(1)],
-                    map: hashmap! {
-                        Var(3) => ShallowProp::Disj(vec![Var(1), Var(0)]),
-                        Var(1) => ShallowProp::Atom(Id(1)),
-                        Var(0) => ShallowProp::Atom(Id(0)),
-                        Var(2) => ShallowProp::Disj(vec![Var(0), Var(1)]),
-                        Var(4) => ShallowProp::Impl(Var(2), Var(3)),
-                    },
-                },
-            )
+                suc: Var(4),
+            },
+        );
+        assert_eq!(
+            prop_map.to_map(),
+            hashmap! [
+                Var(3) => ShallowProp::Disj(vec![Var(1), Var(0)]),
+                Var(1) => ShallowProp::Atom(Id(1)),
+                Var(0) => ShallowProp::Atom(Id(0)),
+                Var(2) => ShallowProp::Disj(vec![Var(0), Var(1)]),
+                Var(4) => ShallowProp::Impl(Var(2), Var(3)),
+            ],
         );
     }
 
@@ -307,32 +367,30 @@ mod tests {
             Box::new(Prop::Conj(vec![Prop::Atom(id1), Prop::Atom(id2)])),
             Box::new(Prop::Conj(vec![Prop::Atom(id2), Prop::Atom(id1)])),
         );
-        let result = Icnf::from_prop(&mut VarGen::new(), &prop);
+        let (icnf, prop_map) = Icnf::from_prop(&mut VarGen::new(), &prop);
         assert_eq!(
-            result,
-            (
-                Icnf {
-                    ant: ClauseSet {
-                        vec: vec![
-                            Clause::Conj(vec![Var(2)], Var(0)),
-                            Clause::Conj(vec![Var(2)], Var(1)),
-                            Clause::Conj(vec![Var(1), Var(0)], Var(3)),
-                            Clause::Impl(Var(2), Var(3), Var(4)),
-                        ]
-                    },
-                    suc: Var(4),
+            icnf,
+            Icnf {
+                ant: ClauseSet {
+                    vec: vec![
+                        Clause::Conj(vec![Var(2)], Var(0)),
+                        Clause::Conj(vec![Var(2)], Var(1)),
+                        Clause::Conj(vec![Var(1), Var(0)], Var(3)),
+                        Clause::Impl(Var(2), Var(3), Var(4)),
+                    ]
                 },
-                Decomposition {
-                    id_map: hashmap![Id(0) => Var(0), Id(1) => Var(1)],
-                    map: hashmap![
-                        Var(3) => ShallowProp::Conj(vec![Var(1), Var(0)]),
-                        Var(1) => ShallowProp::Atom(Id(1)),
-                        Var(0) => ShallowProp::Atom(Id(0)),
-                        Var(2) => ShallowProp::Conj(vec![Var(0), Var(1)]),
-                        Var(4) => ShallowProp::Impl(Var(2), Var(3)),
-                    ],
-                },
-            )
+                suc: Var(4),
+            },
+        );
+        assert_eq!(
+            prop_map.to_map(),
+            hashmap![
+                Var(3) => ShallowProp::Conj(vec![Var(1), Var(0)]),
+                Var(1) => ShallowProp::Atom(Id(1)),
+                Var(0) => ShallowProp::Atom(Id(0)),
+                Var(2) => ShallowProp::Conj(vec![Var(0), Var(1)]),
+                Var(4) => ShallowProp::Impl(Var(2), Var(3)),
+            ],
         );
     }
 }
