@@ -349,10 +349,10 @@ mod tests {
         assert_eq!(
             prop_map.to_map(),
             hashmap! [
-                Var(3) => ShallowProp::Disj(vec![Var(1), Var(0)]),
-                Var(1) => ShallowProp::Atom(Id(1)),
                 Var(0) => ShallowProp::Atom(Id(0)),
+                Var(1) => ShallowProp::Atom(Id(1)),
                 Var(2) => ShallowProp::Disj(vec![Var(0), Var(1)]),
+                Var(3) => ShallowProp::Disj(vec![Var(1), Var(0)]),
                 Var(4) => ShallowProp::Impl(Var(2), Var(3)),
             ],
         );
@@ -385,10 +385,10 @@ mod tests {
         assert_eq!(
             prop_map.to_map(),
             hashmap![
-                Var(3) => ShallowProp::Conj(vec![Var(1), Var(0)]),
-                Var(1) => ShallowProp::Atom(Id(1)),
                 Var(0) => ShallowProp::Atom(Id(0)),
+                Var(1) => ShallowProp::Atom(Id(1)),
                 Var(2) => ShallowProp::Conj(vec![Var(0), Var(1)]),
+                Var(3) => ShallowProp::Conj(vec![Var(1), Var(0)]),
                 Var(4) => ShallowProp::Impl(Var(2), Var(3)),
             ],
         );
