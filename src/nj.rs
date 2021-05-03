@@ -3,12 +3,25 @@ use crate::prop::Prop;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Proof {
+    /// variable in de Bruijn index
     Var(Idx),
+    /// `\x => t`
     Abs(Prop, Box<Proof>),
+    /// `t1 t2`
     App(Box<Proof>, Box<Proof>),
+    /// `(t1, t2, ..., tN)`
     ConjIntro(Vec<Proof>),
-    ConjElim(Box<Proof>, usize, usize),
+    /// `let (.., x, ..) = t in x`
+    ConjElim(
+        Box<Proof>,
+        /// i = projection index (0 <= i < n)
+        usize,
+        /// n = length of the tuple
+        usize,
+    ),
+    /// `CtorI<p1, p2, ..., pN>(t)`
     DisjIntro(Vec<Prop>, Box<Proof>, usize),
+    /// `(match t1 { Ctor1 => u1, Ctor2 => u2, ..., CtorN => uN }): p`
     DisjElim(Prop, Box<Proof>, Vec<Proof>),
 }
 
