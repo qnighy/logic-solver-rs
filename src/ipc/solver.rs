@@ -10,7 +10,6 @@ pub fn solve(prop: &Prop) -> Option<Proof> {
     let (icnf, decomp) = Decomposition::decompose(&mut vargen, prop);
     let icnf_proof = solve_icnf(&vargen, &icnf)?;
     let mut proof = decomp.convert_nj(&icnf_proof, icnf.suc);
-    eprintln!("{:?}", proof);
     proof.reduce_all();
     Some(proof)
 }
