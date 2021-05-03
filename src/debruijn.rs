@@ -1,11 +1,28 @@
 use crate::rollback::{Rollback, RollbackGuard};
 
+pub trait Shift: Clone {
+    fn shift(&mut self, after: Idx, by: usize);
+    fn shifted(&self, after: Idx, by: usize) -> Self {
+        let mut shifted = self.clone();
+        shifted.shift(after, by);
+        shifted
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Idx(pub usize);
 
 impl Idx {
     pub fn s(self) -> Self {
         Self(self.0 + 1)
+    }
+}
+
+impl Shift for Idx {
+    fn shift(&mut self, after: Idx, by: usize) {
+        if *self >= after {
+            self.0 += by;
+        }
     }
 }
 
