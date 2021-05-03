@@ -47,7 +47,7 @@ impl Proof {
             Proof::Abs(ref abstype, ref body) => {
                 let mut ctx = ctx.push(abstype.clone());
                 let tbody = body.ptype(&mut ctx)?;
-                Ok(Prop::Impl(Box::new(abstype.clone()), Box::new(tbody)))
+                Ok(Prop::ImplS(abstype.clone(), tbody))
             }
             Proof::App(ref lhs, ref rhs) => {
                 let lt = lhs.ptype(ctx)?;
@@ -297,21 +297,19 @@ pub mod ProofShorthands {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::prop::IdGen;
+    use crate::prop::{IdGen, PropShorthands};
 
     #[test]
     fn test_ptype1() {
         use ProofShorthands::*;
+        use PropShorthands::*;
 
         let mut idgen = IdGen::new();
         let id1 = idgen.fresh();
         let mut ctx = DbCtx::new();
-        let pf = AbsS(Prop::Atom(id1), Var(Idx(0)));
+        let pf = AbsS(Atom(id1), Var(Idx(0)));
         let ptype = pf.ptype(&mut ctx).unwrap();
-        assert_eq!(
-            ptype,
-            Prop::Impl(Box::new(Prop::Atom(id1)), Box::new(Prop::Atom(id1)))
-        );
+        assert_eq!(ptype, ImplS(Atom(id1), Atom(id1)));
     }
 
     #[test]
@@ -326,10 +324,11 @@ mod tests {
     #[test]
     fn test_subst1() {
         use ProofShorthands::*;
+        use PropShorthands::*;
 
         let mut idgen = IdGen::new();
         let id1 = idgen.fresh();
-        let a = || Prop::Atom(id1);
+        let a = || Atom(id1);
         let mut body = Var(Idx(0));
         let arg = AbsS(a(), Var(Idx(0)));
         body.subst(Idx(0), &arg, 0);
@@ -339,14 +338,12 @@ mod tests {
     #[test]
     fn test_try_reduce_here1() {
         use ProofShorthands::*;
+        use PropShorthands::*;
 
         let mut idgen = IdGen::new();
         let id1 = idgen.fresh();
-        let a = || Prop::Atom(id1);
-        let mut pf = AppS(
-            AbsS(Prop::Impl(Box::new(a()), Box::new(a())), Var(Idx(0))),
-            AbsS(a(), Var(Idx(0))),
-        );
+        let a = || Atom(id1);
+        let mut pf = AppS(AbsS(ImplS(a(), a()), Var(Idx(0))), AbsS(a(), Var(Idx(0))));
         let updated = pf.try_reduce_here();
         assert_eq!(updated, true);
         assert_eq!(pf, AbsS(a(), Var(Idx(0))));
@@ -355,25 +352,24 @@ mod tests {
     #[test]
     fn test_reduce_all1() {
         use ProofShorthands::*;
+        use PropShorthands::*;
 
         let mut idgen = IdGen::new();
         let id1 = idgen.fresh();
-        let mut pf = AbsS(Prop::Atom(id1), Proof::Var(Idx(0)));
+        let mut pf = AbsS(Atom(id1), Var(Idx(0)));
         pf.reduce_all();
-        assert_eq!(pf, AbsS(Prop::Atom(id1), Var(Idx(0))));
+        assert_eq!(pf, AbsS(Atom(id1), Var(Idx(0))));
     }
 
     #[test]
     fn test_reduce_all2() {
         use ProofShorthands::*;
+        use PropShorthands::*;
 
         let mut idgen = IdGen::new();
         let id1 = idgen.fresh();
-        let a = || Prop::Atom(id1);
-        let mut pf = AppS(
-            AbsS(Prop::Impl(Box::new(a()), Box::new(a())), Var(Idx(0))),
-            AbsS(a(), Var(Idx(0))),
-        );
+        let a = || Atom(id1);
+        let mut pf = AppS(AbsS(ImplS(a(), a()), Var(Idx(0))), AbsS(a(), Var(Idx(0))));
         pf.reduce_all();
         assert_eq!(pf, AbsS(a(), Var(Idx(0))));
     }

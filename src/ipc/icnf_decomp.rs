@@ -169,9 +169,7 @@ impl PropMap {
     pub fn get_prop(&self, v: Var) -> Prop {
         match *self.get(v).unwrap() {
             ShallowProp::Atom(id) => Prop::Atom(id),
-            ShallowProp::Impl(lhs, rhs) => {
-                Prop::Impl(Box::new(self.get_prop(lhs)), Box::new(self.get_prop(rhs)))
-            }
+            ShallowProp::Impl(lhs, rhs) => Prop::ImplS(self.get_prop(lhs), self.get_prop(rhs)),
             ShallowProp::Conj(ref children) => {
                 Prop::Conj(children.iter().map(|&child| self.get_prop(child)).collect())
             }
@@ -311,14 +309,16 @@ impl ShallowProp {
 mod tests {
     use super::*;
     use crate::nj::ProofShorthands as NjProofShorthands;
-    use crate::prop::IdGen;
+    use crate::prop::{IdGen, PropShorthands};
     use maplit::hashmap;
 
     #[test]
     fn test_from_prop1() {
+        use PropShorthands::*;
+
         let mut idgen = IdGen::new();
         let id1 = idgen.fresh();
-        let prop = Prop::Atom(id1);
+        let prop = Atom(id1);
         let (icnf, decomp) = Decomposition::decompose(&mut VarGen::new(), &prop);
         assert_eq!(
             icnf,
@@ -338,9 +338,11 @@ mod tests {
 
     #[test]
     fn test_from_prop2() {
+        use PropShorthands::*;
+
         let mut idgen = IdGen::new();
         let id1 = idgen.fresh();
-        let prop = Prop::Impl(Box::new(Prop::Atom(id1)), Box::new(Prop::Atom(id1)));
+        let prop = ImplS(Atom(id1), Atom(id1));
         let (icnf, decomp) = Decomposition::decompose(&mut VarGen::new(), &prop);
         assert_eq!(
             icnf,
@@ -368,12 +370,14 @@ mod tests {
 
     #[test]
     fn test_from_prop3() {
+        use PropShorthands::*;
+
         let mut idgen = IdGen::new();
         let id1 = idgen.fresh();
         let id2 = idgen.fresh();
-        let prop = Prop::Impl(
-            Box::new(Prop::Disj(vec![Prop::Atom(id1), Prop::Atom(id2)])),
-            Box::new(Prop::Disj(vec![Prop::Atom(id2), Prop::Atom(id1)])),
+        let prop = ImplS(
+            Disj(vec![Atom(id1), Atom(id2)]),
+            Disj(vec![Atom(id2), Atom(id1)]),
         );
         let (icnf, decomp) = Decomposition::decompose(&mut VarGen::new(), &prop);
         assert_eq!(
@@ -413,12 +417,14 @@ mod tests {
 
     #[test]
     fn test_from_prop4() {
+        use PropShorthands::*;
+
         let mut idgen = IdGen::new();
         let id1 = idgen.fresh();
         let id2 = idgen.fresh();
-        let prop = Prop::Impl(
-            Box::new(Prop::Conj(vec![Prop::Atom(id1), Prop::Atom(id2)])),
-            Box::new(Prop::Conj(vec![Prop::Atom(id2), Prop::Atom(id1)])),
+        let prop = ImplS(
+            Conj(vec![Atom(id1), Atom(id2)]),
+            Conj(vec![Atom(id2), Atom(id1)]),
         );
         let (icnf, decomp) = Decomposition::decompose(&mut VarGen::new(), &prop);
         assert_eq!(
@@ -459,21 +465,19 @@ mod tests {
     #[test]
     fn test_convert_nj1() {
         use NjProofShorthands::*;
+        use PropShorthands::*;
 
         let mut idgen = IdGen::new();
         let id1 = idgen.fresh();
-        let prop = Prop::Impl(Box::new(Prop::Atom(id1)), Box::new(Prop::Atom(id1)));
+        let prop = ImplS(Atom(id1), Atom(id1));
         let (icnf, decomp) = Decomposition::decompose(&mut VarGen::new(), &prop);
         let pf = Proof::ApplyImplS(ClId(0), Proof::Hypothesis(0), Proof::Hypothesis(0));
         let nj = decomp.convert_nj(&pf, icnf.suc);
         assert_eq!(
             nj,
             AppS(
-                AbsS(
-                    Prop::Impl(Box::new(Prop::Atom(id1)), Box::new(Prop::Atom(id1))),
-                    Var(Idx(0))
-                ),
-                AbsS(Prop::Atom(id1), Var(Idx(0)))
+                AbsS(ImplS(Atom(id1), Atom(id1)), Var(Idx(0))),
+                AbsS(Atom(id1), Var(Idx(0)))
             )
         );
     }
@@ -481,10 +485,11 @@ mod tests {
     #[test]
     fn test_convert_nj2() {
         use NjProofShorthands::*;
+        use PropShorthands::*;
 
         let mut idgen = IdGen::new();
         let id1 = idgen.fresh();
-        let prop = Prop::Impl(Box::new(Prop::Atom(id1)), Box::new(Prop::Atom(id1)));
+        let prop = ImplS(Atom(id1), Atom(id1));
         let (icnf, decomp) = Decomposition::decompose(&mut VarGen::new(), &prop);
         let pf = Proof::ApplyImplS(
             ClId(0),
@@ -496,16 +501,13 @@ mod tests {
             nj,
             AppS(
                 AbsS(
-                    Prop::Impl(Box::new(Prop::Atom(Id(0))), Box::new(Prop::Atom(Id(0)))),
+                    ImplS(Atom(Id(0)), Atom(Id(0))),
                     AppS(
-                        AbsS(
-                            Prop::Impl(Box::new(Prop::Atom(Id(0))), Box::new(Prop::Atom(Id(0)))),
-                            Var(Idx(1))
-                        ),
-                        AbsS(Prop::Atom(Id(0)), Var(Idx(0)))
+                        AbsS(ImplS(Atom(Id(0)), Atom(Id(0))), Var(Idx(1))),
+                        AbsS(Atom(Id(0)), Var(Idx(0)))
                     )
                 ),
-                AbsS(Prop::Atom(Id(0)), Var(Idx(0)))
+                AbsS(Atom(Id(0)), Var(Idx(0)))
             )
         );
     }
@@ -513,17 +515,12 @@ mod tests {
     #[test]
     fn test_convert_nj3() {
         use NjProofShorthands::*;
+        use PropShorthands::*;
 
         let mut idgen = IdGen::new();
         let id1 = idgen.fresh();
         let id2 = idgen.fresh();
-        let prop = Prop::Impl(
-            Box::new(Prop::Atom(id1)),
-            Box::new(Prop::Impl(
-                Box::new(Prop::Atom(id2)),
-                Box::new(Prop::Atom(id1)),
-            )),
-        );
+        let prop = ImplS(Atom(id1), ImplS(Atom(id2), Atom(id1)));
         let (icnf, decomp) = Decomposition::decompose(&mut VarGen::new(), &prop);
         let pf = Proof::ApplyImplS(
             ClId(1),
@@ -534,24 +531,12 @@ mod tests {
         assert_eq!(
             nj,
             AppS(
+                AbsS(ImplS(Atom(id1), ImplS(Atom(id2), Atom(id1))), Var(Idx(0))),
                 AbsS(
-                    Prop::Impl(
-                        Box::new(Prop::Atom(id1)),
-                        Box::new(Prop::Impl(
-                            Box::new(Prop::Atom(id2)),
-                            Box::new(Prop::Atom(id1))
-                        ))
-                    ),
-                    Var(Idx(0))
-                ),
-                AbsS(
-                    Prop::Atom(id1),
+                    Atom(id1),
                     AppS(
-                        AbsS(
-                            Prop::Impl(Box::new(Prop::Atom(id2)), Box::new(Prop::Atom(id1))),
-                            Var(Idx(0))
-                        ),
-                        AbsS(Prop::Atom(Id(1)), Var(Idx(1)))
+                        AbsS(ImplS(Atom(id2), Atom(id1)), Var(Idx(0))),
+                        AbsS(Atom(Id(1)), Var(Idx(1)))
                     )
                 )
             ),
