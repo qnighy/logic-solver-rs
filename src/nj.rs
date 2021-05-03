@@ -26,17 +26,17 @@ impl Proof {
     }
 
     pub fn ptype(&self, ctx: &mut DbCtx<Prop>) -> Result<Prop, TypeError> {
-        match self {
+        match *self {
             Proof::Var(idx) => {
-                let prop = ctx.get(*idx).ok_or_else(|| TypeError)?.clone();
+                let prop = ctx.get(idx).ok_or_else(|| TypeError)?.clone();
                 Ok(prop)
             }
-            Proof::Abs(abstype, body) => {
+            Proof::Abs(ref abstype, ref body) => {
                 let mut ctx = ctx.push(abstype.clone());
                 let tbody = body.ptype(&mut ctx)?;
                 Ok(Prop::Impl(Box::new(abstype.clone()), Box::new(tbody)))
             }
-            Proof::App(lhs, rhs) => {
+            Proof::App(ref lhs, ref rhs) => {
                 let lt = lhs.ptype(ctx)?;
                 let rt = rhs.ptype(ctx)?;
                 if let Prop::Impl(ltl, ltr) = lt {
@@ -49,18 +49,18 @@ impl Proof {
                     Err(TypeError)
                 }
             }
-            Proof::ConjIntro(children) => {
+            Proof::ConjIntro(ref children) => {
                 let ts = children
                     .iter()
                     .map(|child| child.ptype(ctx))
                     .collect::<Result<Vec<_>, _>>()?;
                 Ok(Prop::Conj(ts))
             }
-            Proof::ConjElim(sub, i, n) => {
+            Proof::ConjElim(ref sub, i, n) => {
                 let t = sub.ptype(ctx)?;
                 if let Prop::Conj(mut children) = t {
-                    if children.len() == *n && i < n {
-                        Ok(children.swap_remove(*i))
+                    if children.len() == n && i < n {
+                        Ok(children.swap_remove(i))
                     } else {
                         Err(TypeError)
                     }
@@ -68,15 +68,15 @@ impl Proof {
                     Err(TypeError)
                 }
             }
-            Proof::DisjIntro(props, sub, i) => {
+            Proof::DisjIntro(ref props, ref sub, i) => {
                 let t = sub.ptype(ctx)?;
-                if *i < props.len() && props[*i] == t {
+                if i < props.len() && props[i] == t {
                     Ok(Prop::Disj(props.clone()))
                 } else {
                     Err(TypeError)
                 }
             }
-            Proof::DisjElim(goal, sub, branches) => {
+            Proof::DisjElim(ref goal, ref sub, ref branches) => {
                 let t = sub.ptype(ctx)?;
                 if let Prop::Disj(children) = t {
                     if children.len() == branches.len() {

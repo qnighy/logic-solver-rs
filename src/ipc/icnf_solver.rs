@@ -40,23 +40,23 @@ fn solve_dfs(ant: &ClauseSet, goal: Var, truth: &TruthTable) -> Option<Trace> {
         return Some(Trace::Trivial);
     }
     for (cl_id, clause) in ant.enumerate() {
-        match clause {
+        match *clause {
             Clause::Conj(..) => {
                 // do nothing
             }
             Clause::Impl(a, b, c) => {
                 // If c is already true, the second branch produces the same sequent.
                 // If a is already true, the clause is already handled above in the closure calculation.
-                if truth.get(*c) || truth.get(*a) {
+                if truth.get(c) || truth.get(a) {
                     continue;
                 }
                 let sub0 = {
-                    let mut truth = truth.set_temp(*a, true);
-                    solve_dfs(ant, *b, &mut truth)
+                    let mut truth = truth.set_temp(a, true);
+                    solve_dfs(ant, b, &mut truth)
                 };
                 if let Some(sub0) = sub0 {
                     let sub1 = {
-                        let mut truth = truth.set_temp(*c, true);
+                        let mut truth = truth.set_temp(c, true);
                         solve_dfs(ant, goal, &mut truth)
                     };
                     if let Some(sub1) = sub1 {
@@ -64,7 +64,7 @@ fn solve_dfs(ant: &ClauseSet, goal: Var, truth: &TruthTable) -> Option<Trace> {
                     }
                 }
             }
-            Clause::Disj(lhs, rhs) => {
+            Clause::Disj(ref lhs, ref rhs) => {
                 // We only need Disj when all props in lhs are met.
                 if lhs.iter().any(|&hyp| !truth.get(hyp))
                     || rhs.iter().any(|&option| truth.get(option))
@@ -129,8 +129,8 @@ fn reconstruct_proof(max_id: usize, ant: &ClauseSet, goal: Var, trace: &Trace) -
                 self.backrefs[goal.0].expect("bug: reconstruction failed: backref doesn't exist");
             match br {
                 Backref::Stack(idx) => Proof::Hypothesis(self.binding_stack.len() - 1 - idx),
-                Backref::Cl(cl_id) => match &ant[cl_id] {
-                    Clause::Conj(lhs, _) => Proof::ApplyConj(
+                Backref::Cl(cl_id) => match ant[cl_id] {
+                    Clause::Conj(ref lhs, _) => Proof::ApplyConj(
                         cl_id,
                         lhs.iter()
                             .map(|hyp| self.reconstruct(ant, *hyp, stack_aug))
@@ -138,7 +138,7 @@ fn reconstruct_proof(max_id: usize, ant: &ClauseSet, goal: Var, trace: &Trace) -
                     ),
                     Clause::Impl(_, b, _) => Proof::ApplyImpl(
                         cl_id,
-                        Box::new(self.reconstruct(ant, *b, stack_aug + 1)),
+                        Box::new(self.reconstruct(ant, b, stack_aug + 1)),
                         Box::new(Proof::Hypothesis(self.binding_stack.len() + stack_aug)),
                     ),
                     Clause::Disj(..) => {
@@ -176,24 +176,24 @@ fn reconstruct_proof(max_id: usize, ant: &ClauseSet, goal: Var, trace: &Trace) -
                 break;
             }
         }
-        match trace {
+        match *trace {
             Trace::Trivial => stack.reconstruct(ant, goal, 0),
-            Trace::Impl(cl_id, lhs, rhs) => {
-                if let Clause::Impl(a, b, _) = &ant[*cl_id] {
+            Trace::Impl(cl_id, ref lhs, ref rhs) => {
+                if let Clause::Impl(a, b, _) = ant[cl_id] {
                     let pt = stack.remember();
-                    stack.bind(*a);
-                    let lhs = dfs(ant, *b, stack, lhs);
+                    stack.bind(a);
+                    let lhs = dfs(ant, b, stack, lhs);
                     stack.rollback(pt);
-                    stack.bind(*b);
+                    stack.bind(b);
                     let rhs = dfs(ant, goal, stack, rhs);
                     stack.rollback(pt);
-                    Proof::ApplyImpl(*cl_id, Box::new(lhs), Box::new(rhs))
+                    Proof::ApplyImpl(cl_id, Box::new(lhs), Box::new(rhs))
                 } else {
                     unreachable!("bug: reconstruction failed: expected Trace::Impl");
                 }
             }
-            Trace::Disj(cl_id, branches) => {
-                if let Clause::Disj(lhs, rhs) = &ant[*cl_id] {
+            Trace::Disj(cl_id, ref branches) => {
+                if let Clause::Disj(ref lhs, ref rhs) = ant[cl_id] {
                     let requirements = lhs
                         .iter()
                         .map(|&req| stack.reconstruct(ant, req, 0))
@@ -209,7 +209,7 @@ fn reconstruct_proof(max_id: usize, ant: &ClauseSet, goal: Var, trace: &Trace) -
                             pf
                         })
                         .collect::<Vec<_>>();
-                    Proof::ApplyDisj(*cl_id, requirements, branch_proofs)
+                    Proof::ApplyDisj(cl_id, requirements, branch_proofs)
                 } else {
                     unreachable!("bug: reconstruction failed: expected Trace::Disj");
                 }

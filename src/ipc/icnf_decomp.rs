@@ -29,19 +29,19 @@ impl Decomposition {
         let mut ant = ClauseSet::default();
         for (v, sp) in prop_map.iter() {
             let (pos, neg) = pol_map.polarity(v);
-            match sp {
+            match *sp {
                 ShallowProp::Atom(..) => {}
                 ShallowProp::Impl(lhs, rhs) => {
                     if pos {
-                        let cl = ant.push(Clause::Impl(*lhs, *rhs, v));
+                        let cl = ant.push(Clause::Impl(lhs, rhs, v));
                         sources.insert(cl, ClauseSource::ImplIntro(v));
                     }
                     if neg {
-                        let cl = ant.push(Clause::Conj(vec![v, *lhs], *rhs));
+                        let cl = ant.push(Clause::Conj(vec![v, lhs], rhs));
                         sources.insert(cl, ClauseSource::ImplElim(v));
                     }
                 }
-                ShallowProp::Conj(children) => {
+                ShallowProp::Conj(ref children) => {
                     if pos {
                         let cl = ant.push(Clause::Conj(children.clone(), v));
                         sources.insert(cl, ClauseSource::ConjIntro(v));
@@ -53,7 +53,7 @@ impl Decomposition {
                         }
                     }
                 }
-                ShallowProp::Disj(children) => {
+                ShallowProp::Disj(ref children) => {
                     if pos {
                         for (i, &child) in children.iter().enumerate() {
                             let cl = ant.push(Clause::Conj(vec![child], v));
@@ -102,21 +102,21 @@ impl PropMap {
         self.vars.get(v.0).and_then(|sp| sp.as_ref())
     }
     pub fn insert_prop(&mut self, vargen: &mut VarGen, prop: &Prop) -> Var {
-        let sp = match prop {
-            Prop::Atom(id) => ShallowProp::Atom(*id),
-            Prop::Impl(lhs, rhs) => {
+        let sp = match *prop {
+            Prop::Atom(id) => ShallowProp::Atom(id),
+            Prop::Impl(ref lhs, ref rhs) => {
                 let lhs = self.insert_prop(vargen, lhs);
                 let rhs = self.insert_prop(vargen, rhs);
                 ShallowProp::Impl(lhs, rhs)
             }
-            Prop::Conj(children) => {
+            Prop::Conj(ref children) => {
                 let children = children
                     .iter()
                     .map(|child| self.insert_prop(vargen, child))
                     .collect::<Vec<_>>();
                 ShallowProp::Conj(children)
             }
-            Prop::Disj(children) => {
+            Prop::Disj(ref children) => {
                 let children = children
                     .iter()
                     .map(|child| self.insert_prop(vargen, child))
@@ -166,18 +166,18 @@ impl PolarityMap {
             return;
         }
         polset.insert(v);
-        match decomp.get(v).unwrap() {
+        match *decomp.get(v).unwrap() {
             ShallowProp::Atom(..) => {}
             ShallowProp::Impl(lhs, rhs) => {
-                self.mark_polarity(decomp, *lhs, !positive);
-                self.mark_polarity(decomp, *rhs, positive);
+                self.mark_polarity(decomp, lhs, !positive);
+                self.mark_polarity(decomp, rhs, positive);
             }
-            ShallowProp::Conj(children) => {
+            ShallowProp::Conj(ref children) => {
                 for &child in children {
                     self.mark_polarity(decomp, child, positive);
                 }
             }
-            ShallowProp::Disj(children) => {
+            ShallowProp::Disj(ref children) => {
                 for &child in children {
                     self.mark_polarity(decomp, child, positive);
                 }
