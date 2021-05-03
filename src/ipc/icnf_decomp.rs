@@ -82,9 +82,9 @@ impl Decomposition {
             Proof::ApplyConj(cl_id, ref children) => match *self.sources.get(&cl_id).unwrap() {
                 ClauseSource::ImplElim(v) => {
                     let (vl, _) = self.prop_map.get(v).unwrap().as_impl().unwrap();
-                    NjProof::App(
-                        Box::new(self.convert_nj(&children[0], v)),
-                        Box::new(self.convert_nj(&children[1], vl)),
+                    NjProof::AppS(
+                        self.convert_nj(&children[0], v),
+                        self.convert_nj(&children[1], vl),
                     )
                 }
                 ClauseSource::ConjIntro(v) => {
@@ -98,7 +98,7 @@ impl Decomposition {
                     )
                 }
                 ClauseSource::ConjElim(v, i, n) => {
-                    NjProof::ConjElim(Box::new(self.convert_nj(&children[0], v)), i, n)
+                    NjProof::ConjElimS(self.convert_nj(&children[0], v), i, n)
                 }
                 ClauseSource::DisjIntro(v, i, _) => {
                     let vc = self.prop_map.get(v).unwrap().as_disj().unwrap();
@@ -106,15 +106,15 @@ impl Decomposition {
                         .iter()
                         .map(|&v| self.prop_map.get_prop(v))
                         .collect::<Vec<_>>();
-                    NjProof::DisjIntro(cprops, Box::new(self.convert_nj(&children[0], vc[i])), i)
+                    NjProof::DisjIntroS(cprops, self.convert_nj(&children[0], vc[i]), i)
                 }
                 ClauseSource::ImplIntro(_) | ClauseSource::DisjElim(_) => unreachable!(),
             },
             Proof::ApplyDisj(cl_id, ref children, ref branches) => {
                 if let ClauseSource::DisjElim(v) = *self.sources.get(&cl_id).unwrap() {
-                    NjProof::DisjElim(
+                    NjProof::DisjElimS(
                         self.prop_map.get_prop(goal),
-                        Box::new(self.convert_nj(&children[0], v)),
+                        self.convert_nj(&children[0], v),
                         branches
                             .iter()
                             .map(|child| self.convert_nj(child, goal))
@@ -127,15 +127,11 @@ impl Decomposition {
             Proof::ApplyImpl(cl_id, ref lhs, ref rhs) => {
                 if let ClauseSource::ImplIntro(v) = *self.sources.get(&cl_id).unwrap() {
                     let (vl, vr) = self.prop_map.get(v).unwrap().as_impl().unwrap();
-                    let nj_lhs = NjProof::Abs(
-                        self.prop_map.get_prop(vl),
-                        Box::new(self.convert_nj(lhs, vr)),
-                    );
-                    let nj_rhs = NjProof::Abs(
-                        self.prop_map.get_prop(v),
-                        Box::new(self.convert_nj(rhs, goal)),
-                    );
-                    NjProof::App(Box::new(nj_rhs), Box::new(nj_lhs))
+                    let nj_lhs =
+                        NjProof::AbsS(self.prop_map.get_prop(vl), self.convert_nj(lhs, vr));
+                    let nj_rhs =
+                        NjProof::AbsS(self.prop_map.get_prop(v), self.convert_nj(rhs, goal));
+                    NjProof::AppS(nj_rhs, nj_lhs)
                 } else {
                     unreachable!()
                 }
@@ -314,6 +310,7 @@ impl ShallowProp {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::nj::ProofShorthands as NjProofShorthands;
     use crate::prop::IdGen;
     use maplit::hashmap;
 
@@ -461,6 +458,8 @@ mod tests {
 
     #[test]
     fn test_convert_nj1() {
+        use NjProofShorthands::*;
+
         let mut idgen = IdGen::new();
         let id1 = idgen.fresh();
         let prop = Prop::Impl(Box::new(Prop::Atom(id1)), Box::new(Prop::Atom(id1)));
@@ -469,21 +468,20 @@ mod tests {
         let nj = decomp.convert_nj(&pf, icnf.suc);
         assert_eq!(
             nj,
-            NjProof::App(
-                Box::new(NjProof::Abs(
+            AppS(
+                AbsS(
                     Prop::Impl(Box::new(Prop::Atom(id1)), Box::new(Prop::Atom(id1))),
-                    Box::new(NjProof::Var(Idx(0)))
-                )),
-                Box::new(NjProof::Abs(
-                    Prop::Atom(id1),
-                    Box::new(NjProof::Var(Idx(0)))
-                ))
+                    Var(Idx(0))
+                ),
+                AbsS(Prop::Atom(id1), Var(Idx(0)))
             )
         );
     }
 
     #[test]
     fn test_convert_nj2() {
+        use NjProofShorthands::*;
+
         let mut idgen = IdGen::new();
         let id1 = idgen.fresh();
         let prop = Prop::Impl(Box::new(Prop::Atom(id1)), Box::new(Prop::Atom(id1)));
@@ -496,30 +494,26 @@ mod tests {
         let nj = decomp.convert_nj(&pf, icnf.suc);
         assert_eq!(
             nj,
-            NjProof::App(
-                Box::new(NjProof::Abs(
+            AppS(
+                AbsS(
                     Prop::Impl(Box::new(Prop::Atom(Id(0))), Box::new(Prop::Atom(Id(0)))),
-                    Box::new(NjProof::App(
-                        Box::new(NjProof::Abs(
+                    AppS(
+                        AbsS(
                             Prop::Impl(Box::new(Prop::Atom(Id(0))), Box::new(Prop::Atom(Id(0)))),
-                            Box::new(NjProof::Var(Idx(1)))
-                        )),
-                        Box::new(NjProof::Abs(
-                            Prop::Atom(Id(0)),
-                            Box::new(NjProof::Var(Idx(0)))
-                        ))
-                    ))
-                )),
-                Box::new(NjProof::Abs(
-                    Prop::Atom(Id(0)),
-                    Box::new(NjProof::Var(Idx(0)))
-                ))
+                            Var(Idx(1))
+                        ),
+                        AbsS(Prop::Atom(Id(0)), Var(Idx(0)))
+                    )
+                ),
+                AbsS(Prop::Atom(Id(0)), Var(Idx(0)))
             )
         );
     }
 
     #[test]
     fn test_convert_nj3() {
+        use NjProofShorthands::*;
+
         let mut idgen = IdGen::new();
         let id1 = idgen.fresh();
         let id2 = idgen.fresh();
@@ -539,8 +533,8 @@ mod tests {
         let nj = decomp.convert_nj(&pf, icnf.suc);
         assert_eq!(
             nj,
-            NjProof::App(
-                Box::new(NjProof::Abs(
+            AppS(
+                AbsS(
                     Prop::Impl(
                         Box::new(Prop::Atom(id1)),
                         Box::new(Prop::Impl(
@@ -548,21 +542,18 @@ mod tests {
                             Box::new(Prop::Atom(id1))
                         ))
                     ),
-                    Box::new(NjProof::Var(Idx(0)))
-                )),
-                Box::new(NjProof::Abs(
+                    Var(Idx(0))
+                ),
+                AbsS(
                     Prop::Atom(id1),
-                    Box::new(NjProof::App(
-                        Box::new(NjProof::Abs(
+                    AppS(
+                        AbsS(
                             Prop::Impl(Box::new(Prop::Atom(id2)), Box::new(Prop::Atom(id1))),
-                            Box::new(NjProof::Var(Idx(0)))
-                        )),
-                        Box::new(NjProof::Abs(
-                            Prop::Atom(Id(1)),
-                            Box::new(NjProof::Var(Idx(1)))
-                        ))
-                    ))
-                ))
+                            Var(Idx(0))
+                        ),
+                        AbsS(Prop::Atom(Id(1)), Var(Idx(1)))
+                    )
+                )
             ),
         );
     }

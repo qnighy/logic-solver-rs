@@ -202,6 +202,31 @@ impl Proof {
             }
         }
     }
+
+    #[allow(non_snake_case)]
+    pub fn AbsS(abstype: Prop, body: Proof) -> Self {
+        Self::Abs(abstype, Box::new(body))
+    }
+
+    #[allow(non_snake_case)]
+    pub fn AppS(lhs: Proof, rhs: Proof) -> Self {
+        Self::App(Box::new(lhs), Box::new(rhs))
+    }
+
+    #[allow(non_snake_case)]
+    pub fn ConjElimS(sub: Proof, i: usize, n: usize) -> Self {
+        Self::ConjElim(Box::new(sub), i, n)
+    }
+
+    #[allow(non_snake_case)]
+    pub fn DisjIntroS(props: Vec<Prop>, sub: Proof, i: usize) -> Self {
+        Self::DisjIntro(props, Box::new(sub), i)
+    }
+
+    #[allow(non_snake_case)]
+    pub fn DisjElimS(goal: Prop, sub: Proof, branches: Vec<Proof>) -> Self {
+        Self::DisjElim(goal, Box::new(sub), branches)
+    }
 }
 
 impl Shift for Proof {
@@ -238,6 +263,37 @@ impl Shift for Proof {
     }
 }
 
+#[allow(non_snake_case)]
+pub mod ProofShorthands {
+    use super::*;
+    pub use Proof::*;
+
+    #[allow(non_snake_case)]
+    pub fn AbsS(abstype: Prop, body: Proof) -> Proof {
+        Proof::AbsS(abstype, body)
+    }
+
+    #[allow(non_snake_case)]
+    pub fn AppS(lhs: Proof, rhs: Proof) -> Proof {
+        Proof::AppS(lhs, rhs)
+    }
+
+    #[allow(non_snake_case)]
+    pub fn ConjElimS(sub: Proof, i: usize, n: usize) -> Proof {
+        Proof::ConjElimS(sub, i, n)
+    }
+
+    #[allow(non_snake_case)]
+    pub fn DisjIntroS(props: Vec<Prop>, sub: Proof, i: usize) -> Proof {
+        Proof::DisjIntroS(props, sub, i)
+    }
+
+    #[allow(non_snake_case)]
+    pub fn DisjElimS(goal: Prop, sub: Proof, branches: Vec<Proof>) -> Proof {
+        Proof::DisjElimS(goal, sub, branches)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -245,10 +301,12 @@ mod tests {
 
     #[test]
     fn test_ptype1() {
+        use ProofShorthands::*;
+
         let mut idgen = IdGen::new();
         let id1 = idgen.fresh();
         let mut ctx = DbCtx::new();
-        let pf = Proof::Abs(Prop::Atom(id1), Box::new(Proof::Var(Idx(0))));
+        let pf = AbsS(Prop::Atom(id1), Var(Idx(0)));
         let ptype = pf.ptype(&mut ctx).unwrap();
         assert_eq!(
             ptype,
@@ -258,64 +316,65 @@ mod tests {
 
     #[test]
     fn test_ptype2() {
+        use ProofShorthands::*;
+
         let mut ctx = DbCtx::new();
-        let pf = Proof::Var(Idx(0));
+        let pf = Var(Idx(0));
         pf.ptype(&mut ctx).unwrap_err();
     }
 
     #[test]
     fn test_subst1() {
+        use ProofShorthands::*;
+
         let mut idgen = IdGen::new();
         let id1 = idgen.fresh();
         let a = || Prop::Atom(id1);
-        let mut body = Proof::Var(Idx(0));
-        let arg = Proof::Abs(a(), Box::new(Proof::Var(Idx(0))));
+        let mut body = Var(Idx(0));
+        let arg = AbsS(a(), Var(Idx(0)));
         body.subst(Idx(0), &arg, 0);
-        assert_eq!(body, Proof::Abs(a(), Box::new(Proof::Var(Idx(0)))));
+        assert_eq!(body, AbsS(a(), Var(Idx(0))));
     }
 
     #[test]
     fn test_try_reduce_here1() {
+        use ProofShorthands::*;
+
         let mut idgen = IdGen::new();
         let id1 = idgen.fresh();
         let a = || Prop::Atom(id1);
-        let mut pf = Proof::App(
-            Box::new(Proof::Abs(
-                Prop::Impl(Box::new(a()), Box::new(a())),
-                Box::new(Proof::Var(Idx(0))),
-            )),
-            Box::new(Proof::Abs(a(), Box::new(Proof::Var(Idx(0))))),
+        let mut pf = AppS(
+            AbsS(Prop::Impl(Box::new(a()), Box::new(a())), Var(Idx(0))),
+            AbsS(a(), Var(Idx(0))),
         );
         let updated = pf.try_reduce_here();
         assert_eq!(updated, true);
-        assert_eq!(pf, Proof::Abs(a(), Box::new(Proof::Var(Idx(0)))));
+        assert_eq!(pf, AbsS(a(), Var(Idx(0))));
     }
 
     #[test]
     fn test_reduce_all1() {
+        use ProofShorthands::*;
+
         let mut idgen = IdGen::new();
         let id1 = idgen.fresh();
-        let mut pf = Proof::Abs(Prop::Atom(id1), Box::new(Proof::Var(Idx(0))));
+        let mut pf = AbsS(Prop::Atom(id1), Proof::Var(Idx(0)));
         pf.reduce_all();
-        assert_eq!(
-            pf,
-            Proof::Abs(Prop::Atom(id1), Box::new(Proof::Var(Idx(0))))
-        );
+        assert_eq!(pf, AbsS(Prop::Atom(id1), Var(Idx(0))));
     }
 
     #[test]
     fn test_reduce_all2() {
+        use ProofShorthands::*;
+
         let mut idgen = IdGen::new();
         let id1 = idgen.fresh();
         let a = || Prop::Atom(id1);
-        let mut pf = Proof::App(
-            Box::new(Proof::Abs(
-                Prop::Impl(Box::new(a()), Box::new(a())),
-                Box::new(Proof::Var(Idx(0))),
-            )),
-            Box::new(Proof::Abs(a(), Box::new(Proof::Var(Idx(0))))),
+        let mut pf = AppS(
+            AbsS(Prop::Impl(Box::new(a()), Box::new(a())), Var(Idx(0))),
+            AbsS(a(), Var(Idx(0))),
         );
         pf.reduce_all();
-        assert_eq!(pf, Proof::Abs(a(), Box::new(Proof::Var(Idx(0)))));
+        assert_eq!(pf, AbsS(a(), Var(Idx(0))));
     }
 }
