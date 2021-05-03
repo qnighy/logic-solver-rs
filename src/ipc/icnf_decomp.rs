@@ -76,15 +76,15 @@ impl Decomposition {
         )
     }
 
-    pub fn convert_nj(&self, pf: &Proof, goal: Var, stack_len: usize) -> NjProof {
+    pub fn convert_nj(&self, pf: &Proof, goal: Var) -> NjProof {
         match *pf {
             Proof::Hypothesis(i) => NjProof::Var(Idx(i)),
             Proof::ApplyConj(cl_id, ref children) => match *self.sources.get(&cl_id).unwrap() {
                 ClauseSource::ImplElim(v) => {
                     let (vl, _) = self.prop_map.get(v).unwrap().as_impl().unwrap();
                     NjProof::App(
-                        Box::new(self.convert_nj(&children[0], v, stack_len)),
-                        Box::new(self.convert_nj(&children[1], vl, stack_len)),
+                        Box::new(self.convert_nj(&children[0], v)),
+                        Box::new(self.convert_nj(&children[1], vl)),
                     )
                 }
                 ClauseSource::ConjIntro(v) => {
@@ -93,12 +93,12 @@ impl Decomposition {
                         children
                             .iter()
                             .zip(vc)
-                            .map(|(child, &subgoal)| self.convert_nj(child, subgoal, stack_len))
+                            .map(|(child, &subgoal)| self.convert_nj(child, subgoal))
                             .collect(),
                     )
                 }
                 ClauseSource::ConjElim(v, i, n) => {
-                    NjProof::ConjElim(Box::new(self.convert_nj(&children[0], v, stack_len)), i, n)
+                    NjProof::ConjElim(Box::new(self.convert_nj(&children[0], v)), i, n)
                 }
                 ClauseSource::DisjIntro(v, i, _) => {
                     let vc = self.prop_map.get(v).unwrap().as_disj().unwrap();
@@ -106,11 +106,7 @@ impl Decomposition {
                         .iter()
                         .map(|&v| self.prop_map.get_prop(v))
                         .collect::<Vec<_>>();
-                    NjProof::DisjIntro(
-                        cprops,
-                        Box::new(self.convert_nj(&children[0], vc[i], stack_len)),
-                        i,
-                    )
+                    NjProof::DisjIntro(cprops, Box::new(self.convert_nj(&children[0], vc[i])), i)
                 }
                 ClauseSource::ImplIntro(_) | ClauseSource::DisjElim(_) => unreachable!(),
             },
@@ -118,10 +114,10 @@ impl Decomposition {
                 if let ClauseSource::DisjElim(v) = *self.sources.get(&cl_id).unwrap() {
                     NjProof::DisjElim(
                         self.prop_map.get_prop(goal),
-                        Box::new(self.convert_nj(&children[0], v, stack_len)),
+                        Box::new(self.convert_nj(&children[0], v)),
                         branches
                             .iter()
-                            .map(|child| self.convert_nj(child, goal, stack_len + 1))
+                            .map(|child| self.convert_nj(child, goal))
                             .collect(),
                     )
                 } else {
@@ -133,11 +129,11 @@ impl Decomposition {
                     let (vl, vr) = self.prop_map.get(v).unwrap().as_impl().unwrap();
                     let nj_lhs = NjProof::Abs(
                         self.prop_map.get_prop(vl),
-                        Box::new(self.convert_nj(lhs, vr, stack_len + 1)),
+                        Box::new(self.convert_nj(lhs, vr)),
                     );
                     let nj_rhs = NjProof::Abs(
                         self.prop_map.get_prop(v),
-                        Box::new(self.convert_nj(rhs, goal, stack_len + 1)),
+                        Box::new(self.convert_nj(rhs, goal)),
                     );
                     NjProof::App(Box::new(nj_rhs), Box::new(nj_lhs))
                 } else {
@@ -474,7 +470,7 @@ mod tests {
             Box::new(Proof::Hypothesis(0)),
             Box::new(Proof::Hypothesis(0)),
         );
-        let nj = decomp.convert_nj(&pf, icnf.suc, 0);
+        let nj = decomp.convert_nj(&pf, icnf.suc);
         assert_eq!(
             nj,
             NjProof::App(
@@ -505,7 +501,7 @@ mod tests {
                 Box::new(Proof::Hypothesis(1)),
             )),
         );
-        let nj = decomp.convert_nj(&pf, icnf.suc, 0);
+        let nj = decomp.convert_nj(&pf, icnf.suc);
         assert_eq!(
             nj,
             NjProof::App(
