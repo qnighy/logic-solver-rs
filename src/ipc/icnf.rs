@@ -100,7 +100,7 @@ impl std::ops::IndexMut<ClId> for ClauseSet {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Proof {
-    /// Use the k-th hypothesis in the global index (not de Brujin)
+    /// Use the k-th hypothesis in the local (de Bruijn) index
     Hypothesis(usize),
     /// `clX p1 p2 ... pN`
     ApplyConj(ClId, Vec<Proof>),

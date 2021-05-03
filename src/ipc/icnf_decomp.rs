@@ -78,7 +78,7 @@ impl Decomposition {
 
     pub fn convert_nj(&self, pf: &Proof, goal: Var, stack_len: usize) -> NjProof {
         match *pf {
-            Proof::Hypothesis(i) => NjProof::Var(Idx(stack_len - 1 - i)),
+            Proof::Hypothesis(i) => NjProof::Var(Idx(i)),
             Proof::ApplyConj(cl_id, ref children) => match *self.sources.get(&cl_id).unwrap() {
                 ClauseSource::ImplElim(v) => {
                     let (vl, _) = self.prop_map.get(v).unwrap().as_impl().unwrap();
@@ -484,6 +484,46 @@ mod tests {
                 )),
                 Box::new(NjProof::Abs(
                     Prop::Atom(id1),
+                    Box::new(NjProof::Var(Idx(0)))
+                ))
+            )
+        );
+    }
+
+    #[test]
+    fn test_convert_nj2() {
+        let mut idgen = IdGen::new();
+        let id1 = idgen.fresh();
+        let prop = Prop::Impl(Box::new(Prop::Atom(id1)), Box::new(Prop::Atom(id1)));
+        let (icnf, decomp) = Decomposition::decompose(&mut VarGen::new(), &prop);
+        let pf = Proof::ApplyImpl(
+            ClId(0),
+            Box::new(Proof::Hypothesis(0)),
+            Box::new(Proof::ApplyImpl(
+                ClId(0),
+                Box::new(Proof::Hypothesis(0)),
+                Box::new(Proof::Hypothesis(1)),
+            )),
+        );
+        let nj = decomp.convert_nj(&pf, icnf.suc, 0);
+        assert_eq!(
+            nj,
+            NjProof::App(
+                Box::new(NjProof::Abs(
+                    Prop::Impl(Box::new(Prop::Atom(Id(0))), Box::new(Prop::Atom(Id(0)))),
+                    Box::new(NjProof::App(
+                        Box::new(NjProof::Abs(
+                            Prop::Impl(Box::new(Prop::Atom(Id(0))), Box::new(Prop::Atom(Id(0)))),
+                            Box::new(NjProof::Var(Idx(1)))
+                        )),
+                        Box::new(NjProof::Abs(
+                            Prop::Atom(Id(0)),
+                            Box::new(NjProof::Var(Idx(0)))
+                        ))
+                    ))
+                )),
+                Box::new(NjProof::Abs(
+                    Prop::Atom(Id(0)),
                     Box::new(NjProof::Var(Idx(0)))
                 ))
             )
