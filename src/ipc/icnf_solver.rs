@@ -2,6 +2,7 @@ use bitvec::prelude::*;
 use bitvec::vec::BitVec;
 
 use crate::ipc::icnf::{ClId, Clause, ClauseSet, Icnf, Proof, Var, VarGen};
+use crate::rollback::{Rollback, RollbackGuard};
 
 pub fn solve_icnf(vargen: &VarGen, icnf: &Icnf) -> Option<Proof> {
     let truth = TruthTable::new(vargen);
@@ -249,39 +250,27 @@ impl TruthTable {
         self.0.set(id.0, truth);
     }
 
-    fn set_temp(&mut self, id: Var, truth: bool) -> TruthTableRewind<'_> {
+    fn set_temp(&mut self, id: Var, truth: bool) -> impl std::ops::Deref<Target = TruthTable> + '_ {
+        struct R {
+            id: Var,
+            truth: bool,
+        }
+
+        impl Rollback<TruthTable> for R {
+            fn rollback(&self, this: &mut TruthTable) {
+                this.set(self.id, self.truth);
+            }
+        }
+
         let old_truth = self.get(id);
         self.set(id, truth);
-        TruthTableRewind {
-            table: self,
-            id,
-            truth: old_truth,
-        }
-    }
-}
-
-struct TruthTableRewind<'a> {
-    table: &'a mut TruthTable,
-    id: Var,
-    truth: bool,
-}
-
-impl std::ops::Deref for TruthTableRewind<'_> {
-    type Target = TruthTable;
-    fn deref(&self) -> &Self::Target {
-        &self.table
-    }
-}
-
-impl std::ops::DerefMut for TruthTableRewind<'_> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.table
-    }
-}
-
-impl Drop for TruthTableRewind<'_> {
-    fn drop(&mut self) {
-        self.table.set(self.id, self.truth);
+        RollbackGuard::new(
+            self,
+            R {
+                id,
+                truth: old_truth,
+            },
+        )
     }
 }
 
