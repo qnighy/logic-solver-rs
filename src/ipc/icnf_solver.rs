@@ -139,10 +139,10 @@ fn reconstruct_proof(max_id: usize, ant: &ClauseSet, goal: Var, trace: &Trace) -
                             .map(|hyp| self.reconstruct(ant, *hyp, stack_aug))
                             .collect::<Vec<_>>(),
                     ),
-                    Clause::Impl(_, b, _) => Proof::ApplyImpl(
+                    Clause::Impl(_, b, _) => Proof::ApplyImplS(
                         cl_id,
-                        Box::new(self.reconstruct(ant, b, stack_aug + 1)),
-                        Box::new(Proof::Hypothesis(0)),
+                        self.reconstruct(ant, b, stack_aug + 1),
+                        Proof::Hypothesis(0),
                     ),
                     Clause::Disj(..) => {
                         unreachable!("bug: reconstruction failed: unexpected Disj clause")
@@ -190,7 +190,7 @@ fn reconstruct_proof(max_id: usize, ant: &ClauseSet, goal: Var, trace: &Trace) -
                     stack.bind(c);
                     let rhs = dfs(ant, goal, stack, rhs);
                     stack.rollback(pt);
-                    Proof::ApplyImpl(cl_id, Box::new(lhs), Box::new(rhs))
+                    Proof::ApplyImplS(cl_id, lhs, rhs)
                 } else {
                     unreachable!("bug: reconstruction failed: expected Trace::Impl");
                 }
@@ -279,6 +279,7 @@ impl TruthTable {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ipc::icnf::ProofShorthands;
 
     #[test]
     fn test_solve_icnf1() {
@@ -331,7 +332,7 @@ mod tests {
 
     #[test]
     fn test_solve_icnf4() {
-        use Proof::*;
+        use ProofShorthands::*;
 
         let mut vargen = VarGen::new();
         let id1 = vargen.fresh();
@@ -347,11 +348,7 @@ mod tests {
         );
         assert_eq!(
             provable,
-            Some(ApplyImpl(
-                ClId(0),
-                Box::new(Hypothesis(0)),
-                Box::new(Hypothesis(0)),
-            ))
+            Some(ApplyImplS(ClId(0), Hypothesis(0), Hypothesis(0)))
         );
     }
 
@@ -416,7 +413,7 @@ mod tests {
 
     #[test]
     fn test_solve_icnf8() {
-        use Proof::*;
+        use ProofShorthands::*;
 
         let mut vargen = VarGen::new();
         let id1 = vargen.fresh();
@@ -433,10 +430,10 @@ mod tests {
         );
         assert_eq!(
             provable,
-            Some(ApplyImpl(
+            Some(ApplyImplS(
                 ClId(1),
-                Box::new(ApplyDisj(ClId(0), vec![Hypothesis(0)], vec![])),
-                Box::new(Hypothesis(0))
+                ApplyDisj(ClId(0), vec![Hypothesis(0)], vec![]),
+                Hypothesis(0)
             ))
         );
     }
@@ -542,7 +539,7 @@ mod tests {
 
     #[test]
     fn test_solve_icnf13() {
-        use Proof::*;
+        use ProofShorthands::*;
 
         let mut vargen = VarGen::new();
         let id1 = vargen.fresh();
@@ -569,20 +566,20 @@ mod tests {
         );
         assert_eq!(
             provable,
-            Some(ApplyImpl(
+            Some(ApplyImplS(
                 ClId(5),
-                Box::new(ApplyImpl(
+                ApplyImplS(
                     ClId(1),
-                    Box::new(ApplyConj(
+                    ApplyConj(
                         ClId(4),
                         vec![Hypothesis(1), ApplyConj(ClId(2), vec![Hypothesis(0)])]
-                    )),
-                    Box::new(ApplyConj(
+                    ),
+                    ApplyConj(
                         ClId(4),
                         vec![Hypothesis(1), ApplyConj(ClId(3), vec![Hypothesis(0)])]
-                    )),
-                )),
-                Box::new(Hypothesis(0)),
+                    ),
+                ),
+                Hypothesis(0),
             ))
         );
     }

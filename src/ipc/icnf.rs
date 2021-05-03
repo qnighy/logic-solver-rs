@@ -109,3 +109,22 @@ pub enum Proof {
     /// `let concl = clX (hyp => p1) in p2`
     ApplyImpl(ClId, Box<Proof>, Box<Proof>),
 }
+
+impl Proof {
+    // Variant shorthand
+    #[allow(non_snake_case)]
+    pub fn ApplyImplS(cl_id: ClId, lhs: Proof, rhs: Proof) -> Self {
+        Self::ApplyImpl(cl_id, Box::new(lhs), Box::new(rhs))
+    }
+}
+
+#[allow(non_snake_case)]
+pub mod ProofShorthands {
+    pub use super::Proof::*;
+    use super::*;
+
+    #[allow(non_snake_case)]
+    pub fn ApplyImplS(cl_id: ClId, lhs: Proof, rhs: Proof) -> Proof {
+        Proof::ApplyImplS(cl_id, lhs, rhs)
+    }
+}

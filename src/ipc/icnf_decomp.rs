@@ -465,11 +465,7 @@ mod tests {
         let id1 = idgen.fresh();
         let prop = Prop::Impl(Box::new(Prop::Atom(id1)), Box::new(Prop::Atom(id1)));
         let (icnf, decomp) = Decomposition::decompose(&mut VarGen::new(), &prop);
-        let pf = Proof::ApplyImpl(
-            ClId(0),
-            Box::new(Proof::Hypothesis(0)),
-            Box::new(Proof::Hypothesis(0)),
-        );
+        let pf = Proof::ApplyImplS(ClId(0), Proof::Hypothesis(0), Proof::Hypothesis(0));
         let nj = decomp.convert_nj(&pf, icnf.suc);
         assert_eq!(
             nj,
@@ -492,14 +488,10 @@ mod tests {
         let id1 = idgen.fresh();
         let prop = Prop::Impl(Box::new(Prop::Atom(id1)), Box::new(Prop::Atom(id1)));
         let (icnf, decomp) = Decomposition::decompose(&mut VarGen::new(), &prop);
-        let pf = Proof::ApplyImpl(
+        let pf = Proof::ApplyImplS(
             ClId(0),
-            Box::new(Proof::Hypothesis(0)),
-            Box::new(Proof::ApplyImpl(
-                ClId(0),
-                Box::new(Proof::Hypothesis(0)),
-                Box::new(Proof::Hypothesis(1)),
-            )),
+            Proof::Hypothesis(0),
+            Proof::ApplyImplS(ClId(0), Proof::Hypothesis(0), Proof::Hypothesis(1)),
         );
         let nj = decomp.convert_nj(&pf, icnf.suc);
         assert_eq!(
@@ -539,14 +531,10 @@ mod tests {
             )),
         );
         let (icnf, decomp) = Decomposition::decompose(&mut VarGen::new(), &prop);
-        let pf = Proof::ApplyImpl(
+        let pf = Proof::ApplyImplS(
             ClId(1),
-            Box::new(Proof::ApplyImpl(
-                ClId(0),
-                Box::new(Proof::Hypothesis(1)),
-                Box::new(Proof::Hypothesis(0)),
-            )),
-            Box::new(Proof::Hypothesis(0)),
+            Proof::ApplyImplS(ClId(0), Proof::Hypothesis(1), Proof::Hypothesis(0)),
+            Proof::Hypothesis(0),
         );
         let nj = decomp.convert_nj(&pf, icnf.suc);
         assert_eq!(
