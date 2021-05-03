@@ -525,4 +525,57 @@ mod tests {
             )
         );
     }
+
+    #[test]
+    fn test_convert_nj3() {
+        let mut idgen = IdGen::new();
+        let id1 = idgen.fresh();
+        let id2 = idgen.fresh();
+        let prop = Prop::Impl(
+            Box::new(Prop::Atom(id1)),
+            Box::new(Prop::Impl(
+                Box::new(Prop::Atom(id2)),
+                Box::new(Prop::Atom(id1)),
+            )),
+        );
+        let (icnf, decomp) = Decomposition::decompose(&mut VarGen::new(), &prop);
+        let pf = Proof::ApplyImpl(
+            ClId(1),
+            Box::new(Proof::ApplyImpl(
+                ClId(0),
+                Box::new(Proof::Hypothesis(1)),
+                Box::new(Proof::Hypothesis(0)),
+            )),
+            Box::new(Proof::Hypothesis(0)),
+        );
+        let nj = decomp.convert_nj(&pf, icnf.suc);
+        assert_eq!(
+            nj,
+            NjProof::App(
+                Box::new(NjProof::Abs(
+                    Prop::Impl(
+                        Box::new(Prop::Atom(id1)),
+                        Box::new(Prop::Impl(
+                            Box::new(Prop::Atom(id2)),
+                            Box::new(Prop::Atom(id1))
+                        ))
+                    ),
+                    Box::new(NjProof::Var(Idx(0)))
+                )),
+                Box::new(NjProof::Abs(
+                    Prop::Atom(id1),
+                    Box::new(NjProof::App(
+                        Box::new(NjProof::Abs(
+                            Prop::Impl(Box::new(Prop::Atom(id2)), Box::new(Prop::Atom(id1))),
+                            Box::new(NjProof::Var(Idx(0)))
+                        )),
+                        Box::new(NjProof::Abs(
+                            Prop::Atom(Id(1)),
+                            Box::new(NjProof::Var(Idx(1)))
+                        ))
+                    ))
+                ))
+            ),
+        );
+    }
 }

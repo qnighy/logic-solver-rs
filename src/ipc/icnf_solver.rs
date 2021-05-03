@@ -129,7 +129,9 @@ fn reconstruct_proof(max_id: usize, ant: &ClauseSet, goal: Var, trace: &Trace) -
             let br =
                 self.backrefs[goal.0].expect("bug: reconstruction failed: backref doesn't exist");
             match br {
-                Backref::Stack(idx) => Proof::Hypothesis(self.binding_stack.len() - 1 - idx),
+                Backref::Stack(idx) => {
+                    Proof::Hypothesis(self.binding_stack.len() + stack_aug - 1 - idx)
+                }
                 Backref::Cl(cl_id) => match ant[cl_id] {
                     Clause::Conj(ref lhs, _) => Proof::ApplyConj(
                         cl_id,
@@ -140,7 +142,7 @@ fn reconstruct_proof(max_id: usize, ant: &ClauseSet, goal: Var, trace: &Trace) -
                     Clause::Impl(_, b, _) => Proof::ApplyImpl(
                         cl_id,
                         Box::new(self.reconstruct(ant, b, stack_aug + 1)),
-                        Box::new(Proof::Hypothesis(self.binding_stack.len() + stack_aug)),
+                        Box::new(Proof::Hypothesis(0)),
                     ),
                     Clause::Disj(..) => {
                         unreachable!("bug: reconstruction failed: unexpected Disj clause")
@@ -180,12 +182,12 @@ fn reconstruct_proof(max_id: usize, ant: &ClauseSet, goal: Var, trace: &Trace) -
         match *trace {
             Trace::Trivial => stack.reconstruct(ant, goal, 0),
             Trace::Impl(cl_id, ref lhs, ref rhs) => {
-                if let Clause::Impl(a, b, _) = ant[cl_id] {
+                if let Clause::Impl(a, b, c) = ant[cl_id] {
                     let pt = stack.remember();
                     stack.bind(a);
                     let lhs = dfs(ant, b, stack, lhs);
                     stack.rollback(pt);
-                    stack.bind(b);
+                    stack.bind(c);
                     let rhs = dfs(ant, goal, stack, rhs);
                     stack.rollback(pt);
                     Proof::ApplyImpl(cl_id, Box::new(lhs), Box::new(rhs))
@@ -343,17 +345,12 @@ mod tests {
                 suc: id2,
             },
         );
-        // TODO: redundant proof tree
         assert_eq!(
             provable,
             Some(ApplyImpl(
                 ClId(0),
                 Box::new(Hypothesis(0)),
-                Box::new(ApplyImpl(
-                    ClId(0),
-                    Box::new(Hypothesis(0)),
-                    Box::new(Hypothesis(1))
-                ))
+                Box::new(Hypothesis(0)),
             ))
         );
     }
@@ -434,17 +431,12 @@ mod tests {
                 suc: id3,
             },
         );
-        // TODO: redundant proof
         assert_eq!(
             provable,
             Some(ApplyImpl(
                 ClId(1),
                 Box::new(ApplyDisj(ClId(0), vec![Hypothesis(0)], vec![])),
-                Box::new(ApplyImpl(
-                    ClId(1),
-                    Box::new(Hypothesis(0)),
-                    Box::new(Hypothesis(1))
-                ))
+                Box::new(Hypothesis(0))
             ))
         );
     }
@@ -585,13 +577,12 @@ mod tests {
                         ClId(4),
                         vec![Hypothesis(1), ApplyConj(ClId(2), vec![Hypothesis(0)])]
                     )),
-                    Box::new(Hypothesis(0))
+                    Box::new(ApplyConj(
+                        ClId(4),
+                        vec![Hypothesis(1), ApplyConj(ClId(3), vec![Hypothesis(0)])]
+                    )),
                 )),
-                Box::new(ApplyImpl(
-                    ClId(5),
-                    Box::new(Hypothesis(0)),
-                    Box::new(Hypothesis(1))
-                ))
+                Box::new(Hypothesis(0)),
             ))
         );
     }
