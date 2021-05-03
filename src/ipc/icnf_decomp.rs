@@ -1,6 +1,8 @@
 use std::collections::{HashMap, HashSet};
 
-use crate::ipc::icnf::{ClId, Clause, ClauseSet, Icnf, Var, VarGen};
+use crate::debruijn::Idx;
+use crate::ipc::icnf::{ClId, Clause, ClauseSet, Icnf, Proof, Var, VarGen};
+use crate::nj::Proof as NjProof;
 use crate::prop::{Id, Prop};
 
 #[derive(Debug, Clone)]
@@ -49,7 +51,7 @@ impl Decomposition {
                     if neg {
                         for (i, &child) in children.iter().enumerate() {
                             let cl = ant.push(Clause::Conj(vec![v], child));
-                            sources.insert(cl, ClauseSource::ConjElim(v, i));
+                            sources.insert(cl, ClauseSource::ConjElim(v, i, children.len()));
                         }
                     }
                 }
@@ -57,7 +59,7 @@ impl Decomposition {
                     if pos {
                         for (i, &child) in children.iter().enumerate() {
                             let cl = ant.push(Clause::Conj(vec![child], v));
-                            sources.insert(cl, ClauseSource::DisjIntro(v, i));
+                            sources.insert(cl, ClauseSource::DisjIntro(v, i, children.len()));
                         }
                     }
                     if neg {
@@ -73,6 +75,77 @@ impl Decomposition {
             Decomposition { sources, prop_map },
         )
     }
+
+    pub fn convert_nj(&self, pf: &Proof, goal: Var, stack_len: usize) -> NjProof {
+        match *pf {
+            Proof::Hypothesis(i) => NjProof::Var(Idx(stack_len - 1 - i)),
+            Proof::ApplyConj(cl_id, ref children) => match *self.sources.get(&cl_id).unwrap() {
+                ClauseSource::ImplElim(v) => {
+                    let (vl, _) = self.prop_map.get(v).unwrap().as_impl().unwrap();
+                    NjProof::App(
+                        Box::new(self.convert_nj(&children[0], v, stack_len)),
+                        Box::new(self.convert_nj(&children[1], vl, stack_len)),
+                    )
+                }
+                ClauseSource::ConjIntro(v) => {
+                    let vc = self.prop_map.get(v).unwrap().as_conj().unwrap();
+                    NjProof::ConjIntro(
+                        children
+                            .iter()
+                            .zip(vc)
+                            .map(|(child, &subgoal)| self.convert_nj(child, subgoal, stack_len))
+                            .collect(),
+                    )
+                }
+                ClauseSource::ConjElim(v, i, n) => {
+                    NjProof::ConjElim(Box::new(self.convert_nj(&children[0], v, stack_len)), i, n)
+                }
+                ClauseSource::DisjIntro(v, i, _) => {
+                    let vc = self.prop_map.get(v).unwrap().as_disj().unwrap();
+                    let cprops = vc
+                        .iter()
+                        .map(|&v| self.prop_map.get_prop(v))
+                        .collect::<Vec<_>>();
+                    NjProof::DisjIntro(
+                        cprops,
+                        Box::new(self.convert_nj(&children[0], vc[i], stack_len)),
+                        i,
+                    )
+                }
+                ClauseSource::ImplIntro(_) | ClauseSource::DisjElim(_) => unreachable!(),
+            },
+            Proof::ApplyDisj(cl_id, ref children, ref branches) => {
+                if let ClauseSource::DisjElim(v) = *self.sources.get(&cl_id).unwrap() {
+                    NjProof::DisjElim(
+                        self.prop_map.get_prop(goal),
+                        Box::new(self.convert_nj(&children[0], v, stack_len)),
+                        branches
+                            .iter()
+                            .map(|child| self.convert_nj(child, goal, stack_len + 1))
+                            .collect(),
+                    )
+                } else {
+                    unreachable!()
+                }
+            }
+            Proof::ApplyImpl(cl_id, ref lhs, ref rhs) => {
+                if let ClauseSource::ImplIntro(v) = *self.sources.get(&cl_id).unwrap() {
+                    let (vl, vr) = self.prop_map.get(v).unwrap().as_impl().unwrap();
+                    let nj_lhs = NjProof::Abs(
+                        self.prop_map.get_prop(vl),
+                        Box::new(self.convert_nj(lhs, vr, stack_len + 1)),
+                    );
+                    let nj_rhs = NjProof::Abs(
+                        self.prop_map.get_prop(v),
+                        Box::new(self.convert_nj(rhs, goal, stack_len + 1)),
+                    );
+                    NjProof::App(Box::new(nj_rhs), Box::new(nj_lhs))
+                } else {
+                    unreachable!()
+                }
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -80,8 +153,8 @@ pub enum ClauseSource {
     ImplIntro(Var),
     ImplElim(Var),
     ConjIntro(Var),
-    ConjElim(Var, usize),
-    DisjIntro(Var, usize),
+    ConjElim(Var, usize, usize),
+    DisjIntro(Var, usize, usize),
     DisjElim(Var),
 }
 
@@ -100,6 +173,20 @@ impl PropMap {
     }
     pub fn get(&self, v: Var) -> Option<&ShallowProp> {
         self.vars.get(v.0).and_then(|sp| sp.as_ref())
+    }
+    pub fn get_prop(&self, v: Var) -> Prop {
+        match *self.get(v).unwrap() {
+            ShallowProp::Atom(id) => Prop::Atom(id),
+            ShallowProp::Impl(lhs, rhs) => {
+                Prop::Impl(Box::new(self.get_prop(lhs)), Box::new(self.get_prop(rhs)))
+            }
+            ShallowProp::Conj(ref children) => {
+                Prop::Conj(children.iter().map(|&child| self.get_prop(child)).collect())
+            }
+            ShallowProp::Disj(ref children) => {
+                Prop::Disj(children.iter().map(|&child| self.get_prop(child)).collect())
+            }
+        }
     }
     pub fn insert_prop(&mut self, vargen: &mut VarGen, prop: &Prop) -> Var {
         let sp = match *prop {
@@ -192,6 +279,40 @@ pub enum ShallowProp {
     Impl(Var, Var),
     Conj(Vec<Var>),
     Disj(Vec<Var>),
+}
+
+impl ShallowProp {
+    pub fn as_atom(&self) -> Option<Id> {
+        if let ShallowProp::Atom(id) = *self {
+            Some(id)
+        } else {
+            None
+        }
+    }
+
+    pub fn as_impl(&self) -> Option<(Var, Var)> {
+        if let ShallowProp::Impl(lhs, rhs) = *self {
+            Some((lhs, rhs))
+        } else {
+            None
+        }
+    }
+
+    pub fn as_conj(&self) -> Option<&[Var]> {
+        if let ShallowProp::Conj(ref children) = *self {
+            Some(children)
+        } else {
+            None
+        }
+    }
+
+    pub fn as_disj(&self) -> Option<&[Var]> {
+        if let ShallowProp::Disj(ref children) = *self {
+            Some(children)
+        } else {
+            None
+        }
+    }
 }
 
 #[cfg(test)]
@@ -290,8 +411,8 @@ mod tests {
             *decomp.sources(),
             hashmap![
                 ClId(0) => ClauseSource::DisjElim(Var(2)),
-                ClId(1) => ClauseSource::DisjIntro(Var(3), 0),
-                ClId(2) => ClauseSource::DisjIntro(Var(3), 1),
+                ClId(1) => ClauseSource::DisjIntro(Var(3), 0, 2),
+                ClId(2) => ClauseSource::DisjIntro(Var(3), 1, 2),
                 ClId(3) => ClauseSource::ImplIntro(Var(4)),
             ]
         );
@@ -334,11 +455,38 @@ mod tests {
         assert_eq!(
             *decomp.sources(),
             hashmap![
-                ClId(0) => ClauseSource::ConjElim(Var(2), 0),
-                ClId(1) => ClauseSource::ConjElim(Var(2), 1),
+                ClId(0) => ClauseSource::ConjElim(Var(2), 0, 2),
+                ClId(1) => ClauseSource::ConjElim(Var(2), 1, 2),
                 ClId(2) => ClauseSource::ConjIntro(Var(3)),
                 ClId(3) => ClauseSource::ImplIntro(Var(4)),
             ]
+        );
+    }
+
+    #[test]
+    fn test_convert_nj1() {
+        let mut idgen = IdGen::new();
+        let id1 = idgen.fresh();
+        let prop = Prop::Impl(Box::new(Prop::Atom(id1)), Box::new(Prop::Atom(id1)));
+        let (icnf, decomp) = Decomposition::decompose(&mut VarGen::new(), &prop);
+        let pf = Proof::ApplyImpl(
+            ClId(0),
+            Box::new(Proof::Hypothesis(0)),
+            Box::new(Proof::Hypothesis(0)),
+        );
+        let nj = decomp.convert_nj(&pf, icnf.suc, 0);
+        assert_eq!(
+            nj,
+            NjProof::App(
+                Box::new(NjProof::Abs(
+                    Prop::Impl(Box::new(Prop::Atom(id1)), Box::new(Prop::Atom(id1))),
+                    Box::new(NjProof::Var(Idx(0)))
+                )),
+                Box::new(NjProof::Abs(
+                    Prop::Atom(id1),
+                    Box::new(NjProof::Var(Idx(0)))
+                ))
+            )
         );
     }
 }
