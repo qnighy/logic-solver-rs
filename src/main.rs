@@ -3,7 +3,7 @@ use structopt::StructOpt;
 use thiserror::Error;
 
 use crate::ipc::solve;
-use crate::latex::parse_error_latex;
+use crate::latex::{parse_error_latex, success_latex};
 use crate::parsing::{parse_prop, ParseError};
 use crate::prop::{Env, IdGen, Prop};
 
@@ -57,11 +57,11 @@ fn main2() -> Result<(), LogicSolverError> {
     };
 
     if opt.latex {
-        // let mut idgen = IdGen::new();
-        // let mut env = Env::new();
+        let mut idgen = IdGen::new();
+        let mut env = Env::new();
 
-        match parse_prop(&expr) {
-            Ok(_) => {}
+        let ast = match parse_prop(&expr) {
+            Ok(x) => x,
             Err(e) => {
                 let latex_src = parse_error_latex(&expr, e);
                 let stdout = io::stdout();
@@ -69,8 +69,13 @@ fn main2() -> Result<(), LogicSolverError> {
                 stdout.write_all(latex_src.as_bytes())?;
                 return Ok(());
             }
-        }
-        // TODO
+        };
+        let prop = Prop::from_ast(&mut idgen, &mut env, &ast);
+        let _pf = solve(&prop).expect("TODO: non-provable case");
+        let latex_src = success_latex(&ast);
+        let stdout = io::stdout();
+        let mut stdout = stdout.lock();
+        stdout.write_all(latex_src.as_bytes())?;
         return Ok(());
     }
 
