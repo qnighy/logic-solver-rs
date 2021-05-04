@@ -3,8 +3,8 @@ use askama::Template;
 use crate::parsing::ParseError;
 
 #[derive(Template)]
-#[template(path = "result.tex", escape = "none", syntax = "erbvariant")]
-struct LatexTemplate {
+#[template(path = "error.tex", escape = "none", syntax = "erbvariant")]
+struct ErrorTemplate {
     #[allow(dead_code)]
     source: String,
     #[allow(dead_code)]
@@ -12,7 +12,7 @@ struct LatexTemplate {
 }
 
 pub fn parse_error_latex(src: &str, e: ParseError) -> String {
-    LatexTemplate {
+    ErrorTemplate {
         source: src.to_owned(),
         error: e.to_string(),
     }

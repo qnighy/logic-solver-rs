@@ -1,0 +1,30 @@
+<% extends "base.tex" %>
+<% block body %>
+\begin{tabular}{|c|}
+  \hline
+  \cellcolor[gray]{0.8}
+  \begin{minipage}{10cm}
+    \centering
+    Result
+  \end{minipage}
+  \\\hline
+
+  {
+    \huge
+    \xmark
+    Parse Error
+  }
+  \\\hline
+\end{tabular}
+
+\section*{Input}
+
+\begin{lstlisting}
+  <= source %>
+\end{lstlisting}
+
+\section*{Error}
+
+<= error %>
+
+<% endblock %>
