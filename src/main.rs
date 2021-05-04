@@ -3,7 +3,7 @@ use structopt::StructOpt;
 use thiserror::Error;
 
 use crate::ipc::solve;
-use crate::latex::to_latex;
+use crate::latex::parse_error_latex;
 use crate::parsing::{parse_prop, ParseError};
 use crate::prop::{Env, IdGen, Prop};
 
@@ -57,10 +57,20 @@ fn main2() -> Result<(), LogicSolverError> {
     };
 
     if opt.latex {
-        let latex_src = to_latex();
-        let stdout = io::stdout();
-        let mut stdout = stdout.lock();
-        stdout.write_all(latex_src.as_bytes())?;
+        // let mut idgen = IdGen::new();
+        // let mut env = Env::new();
+
+        match parse_prop(&expr) {
+            Ok(_) => {}
+            Err(e) => {
+                let latex_src = parse_error_latex(&expr, e);
+                let stdout = io::stdout();
+                let mut stdout = stdout.lock();
+                stdout.write_all(latex_src.as_bytes())?;
+                return Ok(());
+            }
+        }
+        // TODO
         return Ok(());
     }
 
