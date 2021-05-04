@@ -9,6 +9,38 @@ pub enum Prop {
 }
 
 impl Prop {
+    pub fn as_atom(&self) -> Option<Id> {
+        if let Prop::Atom(id) = *self {
+            Some(id)
+        } else {
+            None
+        }
+    }
+
+    pub fn as_impl(&self) -> Option<(&Prop, &Prop)> {
+        if let Prop::Impl(ref lhs, ref rhs) = *self {
+            Some((lhs, rhs))
+        } else {
+            None
+        }
+    }
+
+    pub fn as_conj(&self) -> Option<&[Prop]> {
+        if let Prop::Conj(ref children) = *self {
+            Some(children)
+        } else {
+            None
+        }
+    }
+
+    pub fn as_disj(&self) -> Option<&[Prop]> {
+        if let Prop::Disj(ref children) = *self {
+            Some(children)
+        } else {
+            None
+        }
+    }
+
     #[allow(non_snake_case)]
     pub fn ImplS(lhs: Prop, rhs: Prop) -> Self {
         Self::Impl(Box::new(lhs), Box::new(rhs))

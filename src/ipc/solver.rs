@@ -10,7 +10,13 @@ pub fn solve(prop: &Prop) -> Option<Proof> {
     let (icnf, decomp) = Decomposition::decompose(&mut vargen, prop);
     let icnf_proof = solve_icnf(&vargen, &icnf)?;
     let mut proof = decomp.convert_nj(&icnf_proof, icnf.suc);
+    if cfg!(debug_assert) {
+        proof.check_has_type(prop);
+    }
     proof.reduce_all();
+    if cfg!(debug_assert) {
+        proof.check_has_type(prop);
+    }
     Some(proof)
 }
 
@@ -18,7 +24,7 @@ pub fn solve(prop: &Prop) -> Option<Proof> {
 mod tests {
     use super::*;
     use crate::debruijn::Idx;
-    use crate::nj::ProofShorthands;
+    use crate::nj::ProofKindShorthands;
     use crate::prop::{IdGen, PropShorthands};
 
     #[test]
@@ -33,7 +39,7 @@ mod tests {
 
     #[test]
     fn test_solve2() {
-        use ProofShorthands::*;
+        use ProofKindShorthands::*;
         use PropShorthands::*;
 
         let mut idgen = IdGen::new();
@@ -41,12 +47,21 @@ mod tests {
         let a = || Atom(id1);
         let prop = ImplS(a(), a());
         let pf = solve(&prop).unwrap();
-        assert_eq!(pf, AbsS(a(), Var(Idx(0))));
+        assert_eq!(
+            pf,
+            Proof {
+                prop: ImplS(a(), a()),
+                kind: AbsS(Proof {
+                    prop: a(),
+                    kind: Var(Idx(0))
+                })
+            }
+        );
     }
 
     #[test]
     fn test_solve3() {
-        use ProofShorthands::*;
+        use ProofKindShorthands::*;
         use PropShorthands::*;
 
         let mut idgen = IdGen::new();
@@ -56,6 +71,18 @@ mod tests {
         let b = || Atom(id2);
         let prop = ImplS(a(), ImplS(b(), a()));
         let pf = solve(&prop).unwrap();
-        assert_eq!(pf, AbsS(a(), AbsS(b(), Var(Idx(1)))));
+        assert_eq!(
+            pf,
+            Proof {
+                prop: ImplS(a(), ImplS(b(), a())),
+                kind: AbsS(Proof {
+                    prop: ImplS(b(), a()),
+                    kind: AbsS(Proof {
+                        prop: a(),
+                        kind: Var(Idx(1))
+                    })
+                })
+            }
+        );
     }
 }

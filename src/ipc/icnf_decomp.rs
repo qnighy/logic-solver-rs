@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use crate::debruijn::Idx;
 use crate::ipc::icnf::{ClId, Clause, ClauseSet, Icnf, Proof, Var, VarGen};
-use crate::nj::Proof as NjProof;
+use crate::nj::{Proof as NjProof, ProofKind as NjProofKind};
 use crate::prop::{Id, Prop};
 
 #[derive(Debug, Clone)]
@@ -77,19 +77,20 @@ impl Decomposition {
     }
 
     pub fn convert_nj(&self, pf: &Proof, goal: Var) -> NjProof {
-        match *pf {
-            Proof::Hypothesis(i) => NjProof::Var(Idx(i)),
+        let goal_prop = self.prop_map.get_prop(goal);
+        let kind = match *pf {
+            Proof::Hypothesis(i) => NjProofKind::Var(Idx(i)),
             Proof::ApplyConj(cl_id, ref children) => match *self.sources.get(&cl_id).unwrap() {
                 ClauseSource::ImplElim(v) => {
                     let (vl, _) = self.prop_map.get(v).unwrap().as_impl().unwrap();
-                    NjProof::AppS(
+                    NjProofKind::AppS(
                         self.convert_nj(&children[0], v),
                         self.convert_nj(&children[1], vl),
                     )
                 }
                 ClauseSource::ConjIntro(v) => {
                     let vc = self.prop_map.get(v).unwrap().as_conj().unwrap();
-                    NjProof::ConjIntro(
+                    NjProofKind::ConjIntro(
                         children
                             .iter()
                             .zip(vc)
@@ -98,22 +99,17 @@ impl Decomposition {
                     )
                 }
                 ClauseSource::ConjElim(v, i, n) => {
-                    NjProof::ConjElimS(self.convert_nj(&children[0], v), i, n)
+                    NjProofKind::ConjElimS(self.convert_nj(&children[0], v), i, n)
                 }
-                ClauseSource::DisjIntro(v, i, _) => {
+                ClauseSource::DisjIntro(v, i, n) => {
                     let vc = self.prop_map.get(v).unwrap().as_disj().unwrap();
-                    let cprops = vc
-                        .iter()
-                        .map(|&v| self.prop_map.get_prop(v))
-                        .collect::<Vec<_>>();
-                    NjProof::DisjIntroS(cprops, self.convert_nj(&children[0], vc[i]), i)
+                    NjProofKind::DisjIntroS(self.convert_nj(&children[0], vc[i]), i, n)
                 }
                 ClauseSource::ImplIntro(_) | ClauseSource::DisjElim(_) => unreachable!(),
             },
             Proof::ApplyDisj(cl_id, ref children, ref branches) => {
                 if let ClauseSource::DisjElim(v) = *self.sources.get(&cl_id).unwrap() {
-                    NjProof::DisjElimS(
-                        self.prop_map.get_prop(goal),
+                    NjProofKind::DisjElimS(
                         self.convert_nj(&children[0], v),
                         branches
                             .iter()
@@ -126,16 +122,24 @@ impl Decomposition {
             }
             Proof::ApplyImpl(cl_id, ref lhs, ref rhs) => {
                 if let ClauseSource::ImplIntro(v) = *self.sources.get(&cl_id).unwrap() {
-                    let (vl, vr) = self.prop_map.get(v).unwrap().as_impl().unwrap();
-                    let nj_lhs =
-                        NjProof::AbsS(self.prop_map.get_prop(vl), self.convert_nj(lhs, vr));
-                    let nj_rhs =
-                        NjProof::AbsS(self.prop_map.get_prop(v), self.convert_nj(rhs, goal));
-                    NjProof::AppS(nj_rhs, nj_lhs)
+                    let (_, vr) = self.prop_map.get(v).unwrap().as_impl().unwrap();
+                    let nj_lhs = NjProof {
+                        prop: self.prop_map.get_prop(v),
+                        kind: NjProofKind::AbsS(self.convert_nj(lhs, vr)),
+                    };
+                    let nj_rhs = NjProof {
+                        prop: Prop::ImplS(self.prop_map.get_prop(v), self.prop_map.get_prop(goal)),
+                        kind: NjProofKind::AbsS(self.convert_nj(rhs, goal)),
+                    };
+                    NjProofKind::AppS(nj_rhs, nj_lhs)
                 } else {
                     unreachable!()
                 }
             }
+        };
+        NjProof {
+            kind,
+            prop: goal_prop,
         }
     }
 }
@@ -308,7 +312,7 @@ impl ShallowProp {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::nj::ProofShorthands as NjProofShorthands;
+    use crate::nj::ProofKindShorthands;
     use crate::prop::{IdGen, PropShorthands};
     use maplit::hashmap;
 
@@ -464,7 +468,7 @@ mod tests {
 
     #[test]
     fn test_convert_nj1() {
-        use NjProofShorthands::*;
+        use ProofKindShorthands::*;
         use PropShorthands::*;
 
         let mut idgen = IdGen::new();
@@ -475,16 +479,31 @@ mod tests {
         let nj = decomp.convert_nj(&pf, icnf.suc);
         assert_eq!(
             nj,
-            AppS(
-                AbsS(ImplS(Atom(id1), Atom(id1)), Var(Idx(0))),
-                AbsS(Atom(id1), Var(Idx(0)))
-            )
+            NjProof {
+                prop: ImplS(Atom(id1), Atom(id1)),
+                kind: AppS(
+                    NjProof {
+                        prop: ImplS(ImplS(Atom(id1), Atom(id1)), ImplS(Atom(id1), Atom(id1))),
+                        kind: AbsS(NjProof {
+                            prop: ImplS(Atom(id1), Atom(id1)),
+                            kind: Var(Idx(0))
+                        })
+                    },
+                    NjProof {
+                        prop: ImplS(Atom(id1), Atom(id1)),
+                        kind: AbsS(NjProof {
+                            prop: Atom(id1),
+                            kind: Var(Idx(0))
+                        })
+                    }
+                )
+            }
         );
     }
 
     #[test]
     fn test_convert_nj2() {
-        use NjProofShorthands::*;
+        use ProofKindShorthands::*;
         use PropShorthands::*;
 
         let mut idgen = IdGen::new();
@@ -499,22 +518,52 @@ mod tests {
         let nj = decomp.convert_nj(&pf, icnf.suc);
         assert_eq!(
             nj,
-            AppS(
-                AbsS(
-                    ImplS(Atom(Id(0)), Atom(Id(0))),
-                    AppS(
-                        AbsS(ImplS(Atom(Id(0)), Atom(Id(0))), Var(Idx(1))),
-                        AbsS(Atom(Id(0)), Var(Idx(0)))
-                    )
-                ),
-                AbsS(Atom(Id(0)), Var(Idx(0)))
-            )
+            NjProof {
+                prop: ImplS(Atom(Id(0)), Atom(Id(0))),
+                kind: AppS(
+                    NjProof {
+                        prop: ImplS(
+                            ImplS(Atom(Id(0)), Atom(Id(0))),
+                            ImplS(Atom(Id(0)), Atom(Id(0)))
+                        ),
+                        kind: AbsS(NjProof {
+                            prop: ImplS(Atom(Id(0)), Atom(Id(0))),
+                            kind: AppS(
+                                NjProof {
+                                    prop: ImplS(
+                                        ImplS(Atom(Id(0)), Atom(Id(0))),
+                                        ImplS(Atom(Id(0)), Atom(Id(0)))
+                                    ),
+                                    kind: AbsS(NjProof {
+                                        prop: ImplS(Atom(Id(0)), Atom(Id(0))),
+                                        kind: Var(Idx(1))
+                                    })
+                                },
+                                NjProof {
+                                    prop: ImplS(Atom(Id(0)), Atom(Id(0))),
+                                    kind: AbsS(NjProof {
+                                        prop: Atom(Id(0)),
+                                        kind: Var(Idx(0))
+                                    })
+                                }
+                            )
+                        })
+                    },
+                    NjProof {
+                        prop: ImplS(Atom(Id(0)), Atom(Id(0))),
+                        kind: AbsS(NjProof {
+                            prop: Atom(Id(0)),
+                            kind: Var(Idx(0))
+                        })
+                    }
+                )
+            }
         );
     }
 
     #[test]
     fn test_convert_nj3() {
-        use NjProofShorthands::*;
+        use ProofKindShorthands::*;
         use PropShorthands::*;
 
         let mut idgen = IdGen::new();
@@ -530,16 +579,46 @@ mod tests {
         let nj = decomp.convert_nj(&pf, icnf.suc);
         assert_eq!(
             nj,
-            AppS(
-                AbsS(ImplS(Atom(id1), ImplS(Atom(id2), Atom(id1))), Var(Idx(0))),
-                AbsS(
-                    Atom(id1),
-                    AppS(
-                        AbsS(ImplS(Atom(id2), Atom(id1)), Var(Idx(0))),
-                        AbsS(Atom(Id(1)), Var(Idx(1)))
-                    )
+            NjProof {
+                prop: ImplS(Atom(id1), ImplS(Atom(id2), Atom(id1))),
+                kind: AppS(
+                    NjProof {
+                        prop: ImplS(
+                            ImplS(Atom(id1), ImplS(Atom(id2), Atom(id1))),
+                            ImplS(Atom(id1), ImplS(Atom(id2), Atom(id1)))
+                        ),
+                        kind: AbsS(NjProof {
+                            prop: ImplS(Atom(id1), ImplS(Atom(id2), Atom(id1))),
+                            kind: Var(Idx(0))
+                        })
+                    },
+                    NjProof {
+                        prop: ImplS(Atom(id1), ImplS(Atom(id2), Atom(id1))),
+                        kind: AbsS(NjProof {
+                            prop: ImplS(Atom(id2), Atom(id1)),
+                            kind: AppS(
+                                NjProof {
+                                    prop: ImplS(
+                                        ImplS(Atom(id2), Atom(id1)),
+                                        ImplS(Atom(id2), Atom(id1))
+                                    ),
+                                    kind: AbsS(NjProof {
+                                        prop: ImplS(Atom(id2), Atom(id1)),
+                                        kind: Var(Idx(0))
+                                    })
+                                },
+                                NjProof {
+                                    prop: ImplS(Atom(Id(1)), Atom(Id(0))),
+                                    kind: AbsS(NjProof {
+                                        prop: Atom(Id(0)),
+                                        kind: Var(Idx(1))
+                                    })
+                                }
+                            )
+                        })
+                    }
                 )
-            ),
+            },
         );
     }
 }
