@@ -1,3 +1,11 @@
+use std::io::{self, Read};
+use structopt::StructOpt;
+use thiserror::Error;
+
+use crate::ipc::solve;
+use crate::parser::parse_prop;
+use crate::prop::{Env, IdGen, Prop};
+
 pub mod ast;
 pub mod debruijn;
 pub mod ipc;
@@ -9,6 +17,53 @@ pub mod rollback;
 mod tests;
 pub mod tokenizer;
 
+#[derive(Debug, Error)]
+enum LogicSolverError {
+    #[error("I/O error: {0}")]
+    Io(#[from] io::Error),
+}
+
+/// A basic example
+#[derive(StructOpt, Debug)]
+#[structopt(name = "logic-solver")]
+struct Opt {
+    #[structopt(short, long)]
+    expr: Option<String>,
+
+    #[structopt(long)]
+    latex: bool,
+}
+
 fn main() {
-    println!("Hello, world!");
+    let result = main2();
+    if let Err(e) = result {
+        eprintln!("Error: {}", e);
+        std::process::exit(1);
+    }
+}
+
+fn main2() -> Result<(), LogicSolverError> {
+    let opt = Opt::from_args();
+    let expr = if let Some(ref e) = opt.expr {
+        e.clone()
+    } else {
+        let stdin = io::stdin();
+        let mut stdin = stdin.lock();
+        let mut s = String::new();
+        stdin.read_to_string(&mut s)?;
+        s
+    };
+
+    let mut idgen = IdGen::new();
+    let mut env = Env::new();
+    let ast = parse_prop(&expr).unwrap();
+    let prop = Prop::from_ast(&mut idgen, &mut env, &ast);
+    let provable = solve(&prop).is_some();
+    if provable {
+        println!("Provable");
+    } else {
+        println!("Not provable");
+    }
+
+    Ok(())
 }
