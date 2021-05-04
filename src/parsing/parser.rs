@@ -123,7 +123,11 @@ mod tests {
 
     #[test]
     fn test_atom3() {
-        parse_prop("foo23+").unwrap_err();
+        let err = parse_prop("foo23+").unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "parse error at line 1, column 6: invalid characters: \"+\""
+        );
     }
 
     #[test]
@@ -152,12 +156,20 @@ mod tests {
 
     #[test]
     fn test_conj3() {
-        parse_prop("A ∧ B ∧").unwrap_err();
+        let err = parse_prop("A ∧ B ∧").unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "parse error at line 1, column 8: unexpected token: Eof"
+        );
     }
 
     #[test]
     fn test_conj4() {
-        parse_prop("A ∧ ∧ B").unwrap_err();
+        let err = parse_prop("A ∧ ∧ B").unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "parse error at line 1, column 5: unexpected token: Conj"
+        );
     }
 
     #[test]
@@ -178,12 +190,20 @@ mod tests {
 
     #[test]
     fn test_disj3() {
-        parse_prop("A ∨ B ∨").unwrap_err();
+        let err = parse_prop("A ∨ B ∨").unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "parse error at line 1, column 8: unexpected token: Eof"
+        );
     }
 
     #[test]
     fn test_disj4() {
-        parse_prop("A ∨ ∨ B").unwrap_err();
+        let err = parse_prop("A ∨ ∨ B").unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "parse error at line 1, column 5: unexpected token: Disj"
+        );
     }
 
     #[test]
@@ -318,22 +338,38 @@ mod tests {
 
     #[test]
     fn test_paren5() {
-        parse_prop("(B").unwrap_err();
+        let err = parse_prop("(B").unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "parse error at line 1, column 3: unexpected token: Eof"
+        );
     }
 
     #[test]
     fn test_paren6() {
-        parse_prop("B(").unwrap_err();
+        let err = parse_prop("B(").unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "parse error at line 1, column 2: unexpected token: LParen"
+        );
     }
 
     #[test]
     fn test_paren7() {
-        parse_prop(")A").unwrap_err();
+        let err = parse_prop(")A").unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "parse error at line 1, column 1: unexpected token: RParen"
+        );
     }
 
     #[test]
     fn test_paren8() {
-        parse_prop("A)").unwrap_err();
+        let err = parse_prop("A)").unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "parse error at line 1, column 2: unexpected token: RParen"
+        );
     }
 
     #[test]
