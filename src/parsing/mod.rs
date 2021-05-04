@@ -1,6 +1,7 @@
 pub mod ast;
 pub mod error;
 pub mod parser;
+pub mod pos;
 pub mod tokenizer;
 
 pub use self::ast::Prop;

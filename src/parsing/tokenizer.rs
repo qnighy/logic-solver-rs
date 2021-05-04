@@ -1,11 +1,5 @@
 use super::error::ParseError;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
-pub struct Pos {
-    bytepos: usize,
-    line: u32,
-    column: u32,
-}
+use super::pos::Pos;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Token {
