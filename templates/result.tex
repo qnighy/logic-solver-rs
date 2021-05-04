@@ -1,0 +1,55 @@
+\documentclass{article}
+\usepackage{colortbl}
+\usepackage{varwidth}
+\usepackage{pifont}
+\usepackage{xcolor}
+\usepackage{listings}
+
+\newcommand{\cmark}{\ding{52}}%
+\newcommand{\xmark}{\textcolor{red}{\ding{56}}}%
+
+\lstset{
+  basicstyle={\small},%
+  identifierstyle={\small},%
+  commentstyle={\small\itshape},%
+  keywordstyle={\small\bfseries},%
+  ndkeywordstyle={\small},%
+  stringstyle={\small\ttfamily},
+  frame={tb},
+  breaklines=true,
+  columns=[l]{fullflexible},%
+  numbers=left,%
+  xrightmargin=0em,%
+  xleftmargin=3em,%
+  numberstyle={\scriptsize},%
+  stepnumber=1,
+  numbersep=1em,%
+  lineskip=-0.5ex%
+}
+
+\begin{document}
+
+\begin{tabular}{|c|}
+  \hline
+  \cellcolor[gray]{0.8}
+  \begin{minipage}{10cm}
+    \centering
+    Result
+  \end{minipage}
+  \\\hline
+
+  {
+    \huge
+    \xmark
+    Parse Error
+  }
+  \\\hline
+\end{tabular}
+
+\section*{Input}
+
+\begin{lstlisting}
+  A B C
+\end{lstlisting}
+
+\end{document}

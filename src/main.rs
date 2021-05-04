@@ -1,13 +1,15 @@
-use std::io::{self, Read};
+use std::io::{self, Read, Write};
 use structopt::StructOpt;
 use thiserror::Error;
 
 use crate::ipc::solve;
+use crate::latex::to_latex;
 use crate::parsing::{parse_prop, ParseError};
 use crate::prop::{Env, IdGen, Prop};
 
 pub mod debruijn;
 pub mod ipc;
+pub mod latex;
 pub mod nj;
 pub mod parsing;
 pub mod prop;
@@ -53,6 +55,14 @@ fn main2() -> Result<(), LogicSolverError> {
         stdin.read_to_string(&mut s)?;
         s
     };
+
+    if opt.latex {
+        let latex_src = to_latex();
+        let stdout = io::stdout();
+        let mut stdout = stdout.lock();
+        stdout.write_all(latex_src.as_bytes())?;
+        return Ok(());
+    }
 
     let mut idgen = IdGen::new();
     let mut env = Env::new();
