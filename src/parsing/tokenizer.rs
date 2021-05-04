@@ -1,5 +1,4 @@
-#[derive(Debug)]
-pub struct ParseError;
+use super::error::ParseError;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct Pos {

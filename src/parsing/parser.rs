@@ -1,5 +1,6 @@
 use super::ast::Prop;
-use super::tokenizer::{tokenize, ParseError, Token, TokenKind};
+use super::error::ParseError;
+use super::tokenizer::{tokenize, Token, TokenKind};
 
 #[derive(Debug)]
 struct Parser {
