@@ -4,12 +4,14 @@ use thiserror::Error;
 
 use crate::ipc::solve;
 use crate::latex::{parse_error_latex, success_latex};
+use crate::naming::lower_prop;
 use crate::parsing::{parse_prop, ParseError};
-use crate::prop::{Env, IdGen, Prop};
+use crate::prop::{Env, IdGen};
 
 pub mod debruijn;
 pub mod ipc;
 pub mod latex;
+pub mod naming;
 pub mod nj;
 pub mod parsing;
 pub mod prop;
@@ -70,7 +72,7 @@ fn main2() -> Result<(), LogicSolverError> {
                 return Ok(());
             }
         };
-        let prop = Prop::from_ast(&mut idgen, &mut env, &ast);
+        let prop = lower_prop(&mut idgen, &mut env, &ast);
         let _pf = solve(&prop).expect("TODO: non-provable case");
         let latex_src = success_latex(&ast);
         let stdout = io::stdout();
@@ -82,7 +84,7 @@ fn main2() -> Result<(), LogicSolverError> {
     let mut idgen = IdGen::new();
     let mut env = Env::new();
     let ast = parse_prop(&expr)?;
-    let prop = Prop::from_ast(&mut idgen, &mut env, &ast);
+    let prop = lower_prop(&mut idgen, &mut env, &ast);
     let provable = solve(&prop).is_some();
     if provable {
         println!("Provable");

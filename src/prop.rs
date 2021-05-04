@@ -1,7 +1,5 @@
 use std::collections::HashMap;
 
-use crate::parsing::Prop as PropAst;
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Prop {
     Atom(Id),
@@ -11,59 +9,6 @@ pub enum Prop {
 }
 
 impl Prop {
-    pub fn from_ast(idgen: &mut IdGen, env: &mut Env, ast: &PropAst) -> Prop {
-        match ast {
-            PropAst::Atom(ident) => {
-                let id = env.find_name_or_fresh(idgen, ident);
-                Prop::Atom(id)
-            }
-            PropAst::Impl(lhs, rhs) => {
-                let lhs = Self::from_ast(idgen, env, lhs);
-                let rhs = Self::from_ast(idgen, env, rhs);
-                Prop::ImplS(lhs, rhs)
-            }
-            PropAst::Conj(children) => {
-                let children = children
-                    .iter()
-                    .map(|child| Self::from_ast(idgen, env, child))
-                    .collect::<Vec<_>>();
-                Prop::Conj(children)
-            }
-            PropAst::Disj(children) => {
-                let children = children
-                    .iter()
-                    .map(|child| Self::from_ast(idgen, env, child))
-                    .collect::<Vec<_>>();
-                Prop::Disj(children)
-            }
-        }
-    }
-
-    pub fn to_ast(&self, env: &Env) -> PropAst {
-        match self {
-            Prop::Atom(id) => PropAst::Atom(env.get_name(*id).unwrap().to_owned()),
-            Prop::Impl(lhs, rhs) => {
-                let lhs = lhs.to_ast(env);
-                let rhs = rhs.to_ast(env);
-                PropAst::Impl(Box::new(lhs), Box::new(rhs))
-            }
-            Prop::Conj(children) => {
-                let children = children
-                    .iter()
-                    .map(|child| child.to_ast(env))
-                    .collect::<Vec<_>>();
-                PropAst::Conj(children)
-            }
-            Prop::Disj(children) => {
-                let children = children
-                    .iter()
-                    .map(|child| child.to_ast(env))
-                    .collect::<Vec<_>>();
-                PropAst::Disj(children)
-            }
-        }
-    }
-
     #[allow(non_snake_case)]
     pub fn ImplS(lhs: Prop, rhs: Prop) -> Self {
         Self::Impl(Box::new(lhs), Box::new(rhs))
@@ -134,92 +79,5 @@ pub struct Id(#[cfg(not(test))] usize, #[cfg(test)] pub usize);
 impl Id {
     pub fn index(&self) -> usize {
         self.0
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use big_s::S;
-
-    #[test]
-    fn test_from_ast1() {
-        use PropShorthands::*;
-
-        let mut idgen = IdGen::new();
-        let mut env = Env::new();
-        let prop = Prop::from_ast(&mut idgen, &mut env, &PropAst::Atom(S("A")));
-        assert_eq!(prop, Atom(Id(0)));
-    }
-
-    #[test]
-    fn test_from_ast2() {
-        use PropShorthands::*;
-
-        let mut idgen = IdGen::new();
-        let mut env = Env::new();
-        let prop = Prop::from_ast(
-            &mut idgen,
-            &mut env,
-            &PropAst::Impl(
-                Box::new(PropAst::Atom(S("A"))),
-                Box::new(PropAst::Atom(S("B"))),
-            ),
-        );
-        assert_eq!(prop, ImplS(Atom(Id(0)), Atom(Id(1))));
-    }
-
-    #[test]
-    fn test_from_ast3() {
-        use PropShorthands::*;
-
-        let mut idgen = IdGen::new();
-        let mut env = Env::new();
-        let prop = Prop::from_ast(
-            &mut idgen,
-            &mut env,
-            &PropAst::Impl(
-                Box::new(PropAst::Atom(S("A"))),
-                Box::new(PropAst::Atom(S("A"))),
-            ),
-        );
-        assert_eq!(prop, ImplS(Atom(Id(0)), Atom(Id(0))));
-    }
-
-    #[test]
-    fn test_to_ast1() {
-        use PropShorthands::*;
-
-        let mut idgen = IdGen::new();
-        let mut env = Env::new();
-        let id1 = env.find_name_or_fresh(&mut idgen, "A");
-        assert_eq!(Atom(id1).to_ast(&env), PropAst::Atom(S("A")));
-    }
-
-    #[test]
-    fn test_to_ast2() {
-        use PropShorthands::*;
-
-        let mut idgen = IdGen::new();
-        let mut env = Env::new();
-        let id1 = env.find_name_or_fresh(&mut idgen, "A");
-        let id2 = env.find_name_or_fresh(&mut idgen, "B");
-        assert_eq!(
-            Conj(vec![Atom(id1), Atom(id2)]).to_ast(&env),
-            PropAst::Conj(vec![PropAst::Atom(S("A")), PropAst::Atom(S("B"))])
-        );
-    }
-
-    #[test]
-    fn test_to_ast3() {
-        use PropShorthands::*;
-
-        let mut idgen = IdGen::new();
-        let mut env = Env::new();
-        let id1 = env.find_name_or_fresh(&mut idgen, "A");
-        assert_eq!(
-            Disj(vec![Atom(id1), Atom(id1)]).to_ast(&env),
-            PropAst::Disj(vec![PropAst::Atom(S("A")), PropAst::Atom(S("A"))])
-        );
     }
 }

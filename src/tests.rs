@@ -1,9 +1,9 @@
 // TODO: some of the functions should eventually be rearranged as public APIs.
 
 use crate::ipc::solve;
+use crate::naming::lower_prop;
 use crate::parsing::parse_prop;
-use crate::prop::Env;
-use crate::prop::{IdGen, Prop};
+use crate::prop::{Env, IdGen};
 
 const PROPS: &[(&str, bool)] = &[
     ("A", false),
@@ -51,7 +51,7 @@ fn test_provability() {
         let mut idgen = IdGen::new();
         let mut env = Env::new();
         let ast = parse_prop(prop_str).unwrap();
-        let prop = Prop::from_ast(&mut idgen, &mut env, &ast);
+        let prop = lower_prop(&mut idgen, &mut env, &ast);
         let provable = solve(&prop).is_some();
         assert_eq!(provable, provable_expect, "{}", prop_str);
     }
