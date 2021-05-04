@@ -1,5 +1,5 @@
 use crate::ast::Prop;
-use crate::tokenizer::{tokenize, ParseError, Token};
+use crate::tokenizer::{tokenize, ParseError, Token, TokenKind};
 
 #[derive(Debug)]
 struct Parser {
@@ -13,26 +13,26 @@ impl Parser {
     }
 
     fn parse_primary_prop(&mut self) -> Result<Prop, ParseError> {
-        match self.tokens.get(self.pos) {
-            Some(&Token::Ident(ref ident)) => {
+        match self.tokens.get(self.pos).map(|t| &t.kind) {
+            Some(&TokenKind::Ident(ref ident)) => {
                 self.pos += 1;
                 Ok(Prop::Atom(ident.clone()))
             }
-            Some(&Token::LParen) => {
+            Some(&TokenKind::LParen) => {
                 self.pos += 1;
                 let prop = self.parse_prop()?;
-                if let Some(&Token::RParen) = self.tokens.get(self.pos) {
+                if let Some(&TokenKind::RParen) = self.tokens.get(self.pos).map(|t| &t.kind) {
                     self.pos += 1;
                     Ok(prop)
                 } else {
                     Err(ParseError)
                 }
             }
-            Some(&Token::Top) => {
+            Some(&TokenKind::Top) => {
                 self.pos += 1;
                 Ok(Prop::Conj(vec![]))
             }
-            Some(&Token::Bottom) => {
+            Some(&TokenKind::Bottom) => {
                 self.pos += 1;
                 Ok(Prop::Disj(vec![]))
             }
@@ -42,10 +42,10 @@ impl Parser {
 
     fn parse_conj_prop(&mut self) -> Result<Prop, ParseError> {
         let base_prop = self.parse_primary_prop()?;
-        match self.tokens.get(self.pos) {
-            Some(&Token::Conj) => {
+        match self.tokens.get(self.pos).map(|t| &t.kind) {
+            Some(&TokenKind::Conj) => {
                 let mut props = vec![base_prop];
-                while let Some(&Token::Conj) = self.tokens.get(self.pos) {
+                while let Some(&TokenKind::Conj) = self.tokens.get(self.pos).map(|t| &t.kind) {
                     self.pos += 1;
                     props.push(self.parse_primary_prop()?);
                 }
@@ -57,10 +57,10 @@ impl Parser {
 
     fn parse_disj_prop(&mut self) -> Result<Prop, ParseError> {
         let base_prop = self.parse_conj_prop()?;
-        match self.tokens.get(self.pos) {
-            Some(&Token::Disj) => {
+        match self.tokens.get(self.pos).map(|t| &t.kind) {
+            Some(&TokenKind::Disj) => {
                 let mut props = vec![base_prop];
-                while let Some(&Token::Disj) = self.tokens.get(self.pos) {
+                while let Some(&TokenKind::Disj) = self.tokens.get(self.pos).map(|t| &t.kind) {
                     self.pos += 1;
                     props.push(self.parse_conj_prop()?);
                 }
@@ -72,8 +72,8 @@ impl Parser {
 
     fn parse_prop(&mut self) -> Result<Prop, ParseError> {
         let base_prop = self.parse_disj_prop()?;
-        match self.tokens.get(self.pos) {
-            Some(&Token::Arrow) => {
+        match self.tokens.get(self.pos).map(|t| &t.kind) {
+            Some(&TokenKind::Arrow) => {
                 self.pos += 1;
                 let rhs = self.parse_prop()?;
                 Ok(Prop::Impl(Box::new(base_prop), Box::new(rhs)))
