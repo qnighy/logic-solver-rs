@@ -3,7 +3,7 @@ use structopt::StructOpt;
 use thiserror::Error;
 
 use crate::ipc::solve;
-use crate::parsing::parse_prop;
+use crate::parsing::{parse_prop, ParseError};
 use crate::prop::{Env, IdGen, Prop};
 
 pub mod debruijn;
@@ -19,6 +19,8 @@ mod tests;
 enum LogicSolverError {
     #[error("I/O error: {0}")]
     Io(#[from] io::Error),
+    #[error("{0}")]
+    Parse(#[from] ParseError),
 }
 
 /// A basic example
@@ -54,7 +56,7 @@ fn main2() -> Result<(), LogicSolverError> {
 
     let mut idgen = IdGen::new();
     let mut env = Env::new();
-    let ast = parse_prop(&expr).unwrap();
+    let ast = parse_prop(&expr)?;
     let prop = Prop::from_ast(&mut idgen, &mut env, &ast);
     let provable = solve(&prop).is_some();
     if provable {
