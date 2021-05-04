@@ -1,4 +1,3 @@
-use super::error::ParseError;
 use super::pos::Pos;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -18,6 +17,8 @@ pub enum TokenKind {
     Disj,
     Top,
     Bottom,
+    Unknown(String),
+    Eof,
 }
 
 #[derive(Debug)]
@@ -34,12 +35,10 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
-    fn parse_ident(&mut self) -> Result<String, ParseError> {
+    fn parse_ident(&mut self) -> String {
         let start = self.pos;
-        let ch = self.peek().ok_or_else(|| ParseError)?;
-        if !ch.is_ascii_alphabetic() {
-            return Err(ParseError);
-        }
+        let ch = self.peek().unwrap();
+        assert!(ch.is_ascii_alphabetic());
         self.bump();
         while self
             .peek()
@@ -49,59 +48,76 @@ impl<'a> Tokenizer<'a> {
             self.bump();
         }
         let end = self.pos;
-        Ok(self.source[start.bytepos..end.bytepos].to_owned())
+        self.source[start.bytepos..end.bytepos].to_owned()
     }
 
-    fn parse_token(&mut self) -> Result<Option<Token>, ParseError> {
-        self.skip_spaces()?;
+    fn parse_token(&mut self) -> Option<Token> {
+        self.skip_spaces();
         let start = self.pos;
-        let kind = self.parse_token_kind()?;
+        let kind = self.parse_token_kind();
         let end = self.pos;
         if let Some(kind) = kind {
-            Ok(Some(Token { kind, start, end }))
+            Some(Token { kind, start, end })
         } else {
-            Ok(None)
+            None
         }
     }
 
-    fn parse_token_kind(&mut self) -> Result<Option<TokenKind>, ParseError> {
+    fn parse_token_kind(&mut self) -> Option<TokenKind> {
         let next = if let Some(next) = self.peek() {
             next
         } else {
-            return Ok(None);
+            return None;
         };
         if next.is_ascii_alphabetic() {
-            let ident = self.parse_ident()?;
-            Ok(Some(TokenKind::Ident(ident)))
+            let ident = self.parse_ident();
+            Some(TokenKind::Ident(ident))
         } else if next == '→' {
             self.bump();
-            Ok(Some(TokenKind::Arrow))
+            Some(TokenKind::Arrow)
         } else if next == '∧' {
             self.bump();
-            Ok(Some(TokenKind::Conj))
+            Some(TokenKind::Conj)
         } else if next == '∨' {
             self.bump();
-            Ok(Some(TokenKind::Disj))
+            Some(TokenKind::Disj)
         } else if next == '⊤' {
             self.bump();
-            Ok(Some(TokenKind::Top))
+            Some(TokenKind::Top)
         } else if next == '⊥' /* up tack */ || next == '⟂'
         /* perpendicular */
         {
             self.bump();
-            Ok(Some(TokenKind::Bottom))
+            Some(TokenKind::Bottom)
         } else if next == '(' {
             self.bump();
-            Ok(Some(TokenKind::LParen))
+            Some(TokenKind::LParen)
         } else if next == ')' {
             self.bump();
-            Ok(Some(TokenKind::RParen))
+            Some(TokenKind::RParen)
         } else {
-            Err(ParseError)
+            let start = self.pos;
+            self.bump().unwrap();
+            loop {
+                if let Some(ch) = self.peek() {
+                    if ch.is_ascii_alphabetic()
+                        || ch.is_ascii_whitespace()
+                        || "→∧∨⊤⊥⟂()".contains(ch)
+                    {
+                        break;
+                    }
+                } else {
+                    break;
+                }
+                self.bump();
+            }
+            let end = self.pos;
+            let s = self.source[start.bytepos..end.bytepos].to_owned();
+            Some(TokenKind::Unknown(s))
         }
     }
 
-    fn skip_spaces(&mut self) -> Result<(), ParseError> {
+    fn skip_spaces(&mut self) {
         while self
             .peek()
             .map(|b| b.is_ascii_whitespace())
@@ -109,7 +125,6 @@ impl<'a> Tokenizer<'a> {
         {
             self.bump();
         }
-        Ok(())
     }
 
     fn peek(&self) -> Option<char> {
@@ -130,13 +145,18 @@ impl<'a> Tokenizer<'a> {
     }
 }
 
-pub fn tokenize(s: &str) -> Result<Vec<Token>, ParseError> {
+pub fn tokenize(s: &str) -> Vec<Token> {
     let mut tokenizer = Tokenizer::new(s);
     let mut tokens = Vec::new();
-    while let Some(token) = tokenizer.parse_token()? {
+    while let Some(token) = tokenizer.parse_token() {
         tokens.push(token);
     }
-    Ok(tokens)
+    tokens.push(Token {
+        kind: TokenKind::Eof,
+        start: tokenizer.pos,
+        end: tokenizer.pos,
+    });
+    tokens
 }
 
 #[cfg(test)]
@@ -148,14 +168,17 @@ mod tests {
     fn test_atom1() {
         use TokenKind::*;
 
-        let prop = tokenize("A").unwrap();
+        let prop = tokenize("A");
         assert_eq!(
             prop,
-            vec![Token {
-                kind: Ident(S("A")),
-                start: pos(0, 0, 0),
-                end: pos(1, 0, 1),
-            }]
+            vec![
+                Token {
+                    kind: Ident(S("A")),
+                    start: pos(0, 0, 0),
+                    end: pos(1, 0, 1),
+                },
+                eof(1, 0, 1),
+            ]
         );
     }
 
@@ -163,34 +186,58 @@ mod tests {
     fn test_atom2() {
         use TokenKind::*;
 
-        let prop = tokenize("foo23").unwrap();
+        let prop = tokenize("foo23");
         assert_eq!(
             prop,
-            vec![Token {
-                kind: Ident(S("foo23")),
-                start: pos(0, 0, 0),
-                end: pos(5, 0, 5),
-            }]
+            vec![
+                Token {
+                    kind: Ident(S("foo23")),
+                    start: pos(0, 0, 0),
+                    end: pos(5, 0, 5),
+                },
+                eof(5, 0, 5),
+            ]
         );
     }
 
     #[test]
     fn test_atom3() {
-        tokenize("foo23+").unwrap_err();
+        use TokenKind::*;
+
+        let tokens = tokenize("foo23+");
+        assert_eq!(
+            tokens,
+            vec![
+                Token {
+                    kind: Ident(S("foo23")),
+                    start: pos(0, 0, 0),
+                    end: pos(5, 0, 5),
+                },
+                Token {
+                    kind: Unknown(S("+")),
+                    start: pos(5, 0, 5),
+                    end: pos(6, 0, 6),
+                },
+                eof(6, 0, 6),
+            ]
+        );
     }
 
     #[test]
     fn test_atom4() {
         use TokenKind::*;
 
-        let prop = tokenize("\nfoo23 ").unwrap();
+        let prop = tokenize("\nfoo23 ");
         assert_eq!(
             prop,
-            vec![Token {
-                kind: Ident(S("foo23")),
-                start: pos(1, 1, 0),
-                end: pos(6, 1, 5)
-            }]
+            vec![
+                Token {
+                    kind: Ident(S("foo23")),
+                    start: pos(1, 1, 0),
+                    end: pos(6, 1, 5)
+                },
+                eof(7, 1, 6),
+            ]
         );
     }
 
@@ -198,14 +245,17 @@ mod tests {
     fn test_arrow() {
         use TokenKind::*;
 
-        let prop = tokenize("→").unwrap();
+        let prop = tokenize("→");
         assert_eq!(
             prop,
-            vec![Token {
-                kind: Arrow,
-                start: pos(0, 0, 0),
-                end: pos(3, 0, 1)
-            }]
+            vec![
+                Token {
+                    kind: Arrow,
+                    start: pos(0, 0, 0),
+                    end: pos(3, 0, 1)
+                },
+                eof(3, 0, 1),
+            ]
         );
     }
 
@@ -213,14 +263,17 @@ mod tests {
     fn test_conj1() {
         use TokenKind::*;
 
-        let prop = tokenize("∧").unwrap();
+        let prop = tokenize("∧");
         assert_eq!(
             prop,
-            vec![Token {
-                kind: Conj,
-                start: pos(0, 0, 0),
-                end: pos(3, 0, 1)
-            }]
+            vec![
+                Token {
+                    kind: Conj,
+                    start: pos(0, 0, 0),
+                    end: pos(3, 0, 1)
+                },
+                eof(3, 0, 1),
+            ]
         );
     }
 
@@ -228,7 +281,7 @@ mod tests {
     fn test_conj2() {
         use TokenKind::*;
 
-        let prop = tokenize("A ∧ B").unwrap();
+        let prop = tokenize("A ∧ B");
         assert_eq!(
             prop,
             vec![
@@ -247,6 +300,7 @@ mod tests {
                     start: pos(6, 0, 4),
                     end: pos(7, 0, 5)
                 },
+                eof(7, 0, 5),
             ]
         );
     }
@@ -255,7 +309,7 @@ mod tests {
     fn test_paren1() {
         use TokenKind::*;
 
-        let prop = tokenize("(A) ∧ B").unwrap();
+        let prop = tokenize("(A) ∧ B");
         assert_eq!(
             prop,
             vec![
@@ -284,6 +338,7 @@ mod tests {
                     start: pos(8, 0, 6),
                     end: pos(9, 0, 7)
                 },
+                eof(9, 0, 7),
             ]
         );
     }
@@ -292,14 +347,17 @@ mod tests {
     fn test_top1() {
         use TokenKind::*;
 
-        let prop = tokenize("⊤").unwrap();
+        let prop = tokenize("⊤");
         assert_eq!(
             prop,
-            vec![Token {
-                kind: Top,
-                start: pos(0, 0, 0),
-                end: pos(3, 0, 1)
-            }]
+            vec![
+                Token {
+                    kind: Top,
+                    start: pos(0, 0, 0),
+                    end: pos(3, 0, 1)
+                },
+                eof(3, 0, 1),
+            ]
         );
     }
 
@@ -307,14 +365,17 @@ mod tests {
     fn test_bottom1() {
         use TokenKind::*;
 
-        let prop = tokenize("⊥").unwrap();
+        let prop = tokenize("⊥");
         assert_eq!(
             prop,
-            vec![Token {
-                kind: Bottom,
-                start: pos(0, 0, 0),
-                end: pos(3, 0, 1)
-            }]
+            vec![
+                Token {
+                    kind: Bottom,
+                    start: pos(0, 0, 0),
+                    end: pos(3, 0, 1)
+                },
+                eof(3, 0, 1),
+            ]
         );
     }
 
@@ -322,15 +383,26 @@ mod tests {
     fn test_bottom2() {
         use TokenKind::*;
 
-        let prop = tokenize("⟂").unwrap();
+        let prop = tokenize("⟂");
         assert_eq!(
             prop,
-            vec![Token {
-                kind: Bottom,
-                start: pos(0, 0, 0),
-                end: pos(3, 0, 1)
-            }]
+            vec![
+                Token {
+                    kind: Bottom,
+                    start: pos(0, 0, 0),
+                    end: pos(3, 0, 1)
+                },
+                eof(3, 0, 1),
+            ]
         );
+    }
+
+    fn eof(bytepos: usize, line: u32, column: u32) -> Token {
+        Token {
+            kind: TokenKind::Eof,
+            start: pos(bytepos, line, column),
+            end: pos(bytepos, line, column),
+        }
     }
 
     fn pos(bytepos: usize, line: u32, column: u32) -> Pos {
