@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::ast::Prop as PropAst;
+use crate::parsing::Prop as PropAst;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Prop {

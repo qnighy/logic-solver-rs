@@ -1,5 +1,5 @@
-use crate::ast::Prop;
-use crate::tokenizer::{tokenize, ParseError, Token, TokenKind};
+use super::ast::Prop;
+use super::tokenizer::{tokenize, ParseError, Token, TokenKind};
 
 #[derive(Debug)]
 struct Parser {

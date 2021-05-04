@@ -3,19 +3,17 @@ use structopt::StructOpt;
 use thiserror::Error;
 
 use crate::ipc::solve;
-use crate::parser::parse_prop;
+use crate::parsing::parse_prop;
 use crate::prop::{Env, IdGen, Prop};
 
-pub mod ast;
 pub mod debruijn;
 pub mod ipc;
 pub mod nj;
-pub mod parser;
+pub mod parsing;
 pub mod prop;
 pub mod rollback;
 #[cfg(test)]
 mod tests;
-pub mod tokenizer;
 
 #[derive(Debug, Error)]
 enum LogicSolverError {

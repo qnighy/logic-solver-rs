@@ -1,8 +1,9 @@
 // TODO: some of the functions should eventually be rearranged as public APIs.
 
+use crate::ipc::solve;
+use crate::parsing::parse_prop;
 use crate::prop::Env;
 use crate::prop::{IdGen, Prop};
-use crate::{ipc::solve, parser::parse_prop};
 
 const PROPS: &[(&str, bool)] = &[
     ("A", false),
