@@ -70,21 +70,21 @@ $(A \to B \to A) \wedge (A \vee B \to B \vee A)$
 \section*{Proof}
 
 \begin{prooftree}
-\AxiomC{[$A$]}
-\RightLabel{\scriptsize${\to}_I$}
+\AxiomC{$[A]_{H1}$}
+\RightLabel{\scriptsize${\to}_I (H2)$}
 \UnaryInfC{$B \to A$}
-\RightLabel{\scriptsize${\to}_I$}
+\RightLabel{\scriptsize${\to}_I (H1)$}
 \UnaryInfC{$A \to B \to A$}
-\AxiomC{[$A \vee B$]}
-\AxiomC{[$A$]}
+\AxiomC{$[A \vee B]_{H3}$}
+\AxiomC{$[A]_{H4}$}
 \RightLabel{\scriptsize${\vee}_{I 2}$}
 \UnaryInfC{$B \vee A$}
-\AxiomC{[$B$]}
+\AxiomC{$[B]_{H4}$}
 \RightLabel{\scriptsize${\vee}_{I 1}$}
 \UnaryInfC{$B \vee A$}
-\RightLabel{\scriptsize${\vee}_E$}
+\RightLabel{\scriptsize${\vee}_E (H4)$}
 \TrinaryInfC{$B \vee A$}
-\RightLabel{\scriptsize${\to}_I$}
+\RightLabel{\scriptsize${\to}_I (H3)$}
 \UnaryInfC{$A \vee B \to B \vee A$}
 \RightLabel{\scriptsize${\wedge}_I$}
 \BinaryInfC{$(A \to B \to A) \wedge (A \vee B \to B \vee A)$}

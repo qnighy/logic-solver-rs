@@ -20,10 +20,11 @@ fn promote_nj_rec(
         ProofKind::Var(idx) => VisibleProofKind::Axiom(ctx[idx].clone()),
         ProofKind::Abs(ref body) => {
             let hyp_name = ctr.fresh();
-            let mut ctx = ctx.push(hyp_name);
+            let mut ctx = ctx.push(hyp_name.clone());
             let body = promote_nj_rec(body, env, &mut ctx, ctr);
             VisibleProofKind::SubProof {
                 rule: RuleName::ImplIntro,
+                introduces: Some(hyp_name),
                 subproofs: vec![body],
             }
         }
@@ -32,6 +33,7 @@ fn promote_nj_rec(
             let rhs = promote_nj_rec(rhs, env, ctx, ctr);
             VisibleProofKind::SubProof {
                 rule: RuleName::ImplElim,
+                introduces: None,
                 subproofs: vec![lhs, rhs],
             }
         }
@@ -42,6 +44,7 @@ fn promote_nj_rec(
                 .collect::<Vec<_>>();
             VisibleProofKind::SubProof {
                 rule: RuleName::ConjIntro(children.len()),
+                introduces: None,
                 subproofs: children,
             }
         }
@@ -49,6 +52,7 @@ fn promote_nj_rec(
             let sub = promote_nj_rec(sub, env, ctx, ctr);
             VisibleProofKind::SubProof {
                 rule: RuleName::ConjElim(i, n),
+                introduces: None,
                 subproofs: vec![sub],
             }
         }
@@ -56,16 +60,20 @@ fn promote_nj_rec(
             let sub = promote_nj_rec(sub, env, ctx, ctr);
             VisibleProofKind::SubProof {
                 rule: RuleName::DisjIntro(i, n),
+                introduces: None,
                 subproofs: vec![sub],
             }
         }
         ProofKind::DisjElim(ref sub, ref branches) => {
             let mut children = vec![promote_nj_rec(sub, env, ctx, ctr)];
+            let hyp_name = ctr.fresh();
             for branch in branches {
-                children.push(promote_nj_rec(branch, env, ctx, ctr));
+                let mut ctx = ctx.push(hyp_name.clone());
+                children.push(promote_nj_rec(branch, env, &mut ctx, ctr));
             }
             VisibleProofKind::SubProof {
                 rule: RuleName::DisjElim(branches.len()),
+                introduces: Some(hyp_name),
                 subproofs: children,
             }
         }
@@ -127,6 +135,7 @@ mod tests {
                 ),
                 kind: VisibleProofKind::SubProof {
                     rule: RuleName::ImplIntro,
+                    introduces: Some(S("H1")),
                     subproofs: vec![VisibleProof {
                         prop: PropAst::Atom(S("A")),
                         kind: VisibleProofKind::Axiom(S("H1")),

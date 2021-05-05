@@ -12,6 +12,7 @@ pub enum VisibleProofKind {
     Axiom(String),
     SubProof {
         rule: RuleName,
+        introduces: Option<String>,
         subproofs: Vec<VisibleProof>,
     },
 }

@@ -24,10 +24,10 @@ const NARY: &[&str] = &[
 
 pub(crate) fn write_nj_latex(pf: &VisibleProof, f: &mut fmt::Formatter) -> fmt::Result {
     match pf.kind {
-        VisibleProofKind::Axiom(_) => {
-            f.write_str("\\AxiomC{[$")?;
+        VisibleProofKind::Axiom(ref hyp_name) => {
+            f.write_str("\\AxiomC{$[")?;
             write_prop_latex(&pf.prop, f)?;
-            f.write_str("$]}\n")?;
+            write!(f, "]_{{{}}}$}}\n", hyp_name)?;
         }
         VisibleProofKind::Open => {
             f.write_str("\\AxiomC{$")?;
@@ -36,31 +36,28 @@ pub(crate) fn write_nj_latex(pf: &VisibleProof, f: &mut fmt::Formatter) -> fmt::
         }
         VisibleProofKind::SubProof {
             rule,
-            ref subproofs,
-        } if subproofs.len() == 0 => {
-            f.write_str("\\RightLabel{\\scriptsize")?;
-            write_rule_latex(rule, f)?;
-            f.write_str("}\n")?;
-            f.write_str("\\AxiomC{}\n")?;
-            f.write_str("\\UnaryInfC{$")?;
-            write_prop_latex(&pf.prop, f)?;
-            f.write_str("$}\n")?;
-        }
-        VisibleProofKind::SubProof {
-            rule,
+            ref introduces,
             ref subproofs,
         } => {
             for subproof in subproofs {
                 write_nj_latex(subproof, f)?;
             }
-            f.write_str("\\RightLabel{\\scriptsize")?;
+            f.write_str("\\RightLabel{\\scriptsize$")?;
             write_rule_latex(rule, f)?;
-            f.write_str("}\n")?;
-            // TODO: more than 5 branches
-            let cmd = NARY[subproofs.len()];
-            f.write_str("\\")?;
-            f.write_str(cmd)?;
-            f.write_str("{$")?;
+            if let Some(ref introduces) = *introduces {
+                write!(f, " ({})", introduces)?;
+            }
+            f.write_str("$}\n")?;
+            if subproofs.len() == 0 {
+                f.write_str("\\AxiomC{}\n")?;
+                f.write_str("\\UnaryInfC{$")?;
+            } else {
+                // TODO: more than 5 branches
+                let cmd = NARY[subproofs.len()];
+                f.write_str("\\")?;
+                f.write_str(cmd)?;
+                f.write_str("{$")?;
+            }
             write_prop_latex(&pf.prop, f)?;
             f.write_str("$}\n")?;
         }
@@ -69,7 +66,6 @@ pub(crate) fn write_nj_latex(pf: &VisibleProof, f: &mut fmt::Formatter) -> fmt::
 }
 
 pub(crate) fn write_rule_latex(rule: RuleName, f: &mut fmt::Formatter) -> fmt::Result {
-    f.write_str("$")?;
     match rule {
         RuleName::ImplIntro => f.write_str("{\\to}_I")?,
         RuleName::ImplElim => f.write_str("{\\to}_E")?,
@@ -88,6 +84,5 @@ pub(crate) fn write_rule_latex(rule: RuleName, f: &mut fmt::Formatter) -> fmt::R
         RuleName::DisjElim(0) => f.write_str("{\\bot}_E")?,
         RuleName::DisjElim(_) => f.write_str("{\\vee}_E")?,
     }
-    f.write_str("$")?;
     Ok(())
 }
