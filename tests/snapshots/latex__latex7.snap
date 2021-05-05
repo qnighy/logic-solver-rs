@@ -1,0 +1,391 @@
+---
+source: tests/latex.rs
+expression: "run(\"(A → A → B) → (B → B → C) → (C → C → D) → (D → D → E) → (E → E → F) → A → F\")"
+
+---
+\documentclass[a4paper,twoside=false,DIV=16]{scrartcl}
+\usepackage{bussproofs}
+\usepackage{colortbl}
+\usepackage{varwidth}
+\usepackage{pifont}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{xpatch}
+
+\newcommand{\cmark}{\textcolor{blue}{\ding{52}}}%
+\newcommand{\xmark}{\textcolor{red}{\ding{56}}}%
+
+\lstset{%
+  basicstyle={\small},%
+  identifierstyle={\small},%
+  commentstyle={\small\itshape},%
+  keywordstyle={\small\bfseries},%
+  ndkeywordstyle={\small},%
+  stringstyle={\small\ttfamily},
+  frame={tb},
+  breaklines=true,
+  columns=[l]{fullflexible},%
+  numbers=left,%
+  xrightmargin=0em,%
+  xleftmargin=3em,%
+  numberstyle={\scriptsize},%
+  stepnumber=1,
+  numbersep=1em,%
+  lineskip=-0.5ex%
+}
+
+\title{Logic solver result}
+
+\makeatletter
+% remove author, date, publishers
+\xpatchcmd{\@maketitle}
+  {%
+    {%
+      \usekomafont{author}{%
+        \lineskip .5em%
+        \begin{tabular}[t]{c}
+          \@author
+        \end{tabular}\par
+      }%
+    }%
+    \vskip 1em%
+    {\usekomafont{date}{\@date \par}}%
+    \vskip \z@ \@plus 1em
+    {\usekomafont{publishers}{\@publishers \par}}%
+  }
+  {}{}{\PatchFailed}
+\makeatother
+
+\begin{document}
+
+\maketitle
+
+
+\begin{center}
+\begin{tabular}{|c|}
+  \hline
+  \cellcolor[gray]{0.8}
+  \begin{minipage}{10cm}
+    \centering
+    Result
+  \end{minipage}
+  \\\hline
+
+  {
+    \huge
+
+
+    \cmark
+    Provable
+
+  }
+  \\\hline
+\end{tabular}
+\end{center}
+
+\section*{Input}
+
+$(A \to A \to B) \to (B \to B \to C) \to (C \to C \to D) \to (D \to D \to E) \to (E \to E \to F) \to A \to F$
+
+
+
+
+\section*{Proof}
+\subsection*{Main proof}
+\begin{prooftree}
+\AxiomC{$[E \to E \to F]_{5}$}
+\AxiomC{sub 1}
+\noLine
+\UnaryInfC{$\vdots$}
+\noLine
+\UnaryInfC{$E$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$E \to F$}
+\AxiomC{sub 6}
+\noLine
+\UnaryInfC{$\vdots$}
+\noLine
+\UnaryInfC{$E$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$F$}
+\RightLabel{\scriptsize${\to}_I (6)$}
+\UnaryInfC{$A \to F$}
+\RightLabel{\scriptsize${\to}_I (5)$}
+\UnaryInfC{$(E \to E \to F) \to A \to F$}
+\RightLabel{\scriptsize${\to}_I (4)$}
+\UnaryInfC{$(D \to D \to E) \to (E \to E \to F) \to A \to F$}
+\RightLabel{\scriptsize${\to}_I (3)$}
+\UnaryInfC{$(C \to C \to D) \to (D \to D \to E) \to (E \to E \to F) \to A \to F$}
+\RightLabel{\scriptsize${\to}_I (2)$}
+\UnaryInfC{$(B \to B \to C) \to (C \to C \to D) \to (D \to D \to E) \to (E \to E \to F) \to A \to F$}
+\RightLabel{\scriptsize${\to}_I (1)$}
+\UnaryInfC{$(A \to A \to B) \to (B \to B \to C) \to (C \to C \to D) \to (D \to D \to E) \to (E \to E \to F) \to A \to F$}
+
+\end{prooftree}
+\subsection*{Subproof 1}
+\begin{prooftree}
+\AxiomC{$[D \to D \to E]_{4}$}
+\AxiomC{$[C \to C \to D]_{3}$}
+\AxiomC{sub 2}
+\noLine
+\UnaryInfC{$\vdots$}
+\noLine
+\UnaryInfC{$C$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$C \to D$}
+\AxiomC{sub 3}
+\noLine
+\UnaryInfC{$\vdots$}
+\noLine
+\UnaryInfC{$C$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$D$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$D \to E$}
+\AxiomC{$[C \to C \to D]_{3}$}
+\AxiomC{sub 4}
+\noLine
+\UnaryInfC{$\vdots$}
+\noLine
+\UnaryInfC{$C$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$C \to D$}
+\AxiomC{sub 5}
+\noLine
+\UnaryInfC{$\vdots$}
+\noLine
+\UnaryInfC{$C$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$D$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$E$}
+
+\end{prooftree}
+\subsection*{Subproof 2}
+\begin{prooftree}
+\AxiomC{$[B \to B \to C]_{2}$}
+\AxiomC{$[A \to A \to B]_{1}$}
+\AxiomC{$[A]_{6}$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$A \to B$}
+\AxiomC{$[A]_{6}$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$B$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$B \to C$}
+\AxiomC{$[A \to A \to B]_{1}$}
+\AxiomC{$[A]_{6}$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$A \to B$}
+\AxiomC{$[A]_{6}$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$B$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$C$}
+
+\end{prooftree}
+\subsection*{Subproof 3}
+\begin{prooftree}
+\AxiomC{$[B \to B \to C]_{2}$}
+\AxiomC{$[A \to A \to B]_{1}$}
+\AxiomC{$[A]_{6}$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$A \to B$}
+\AxiomC{$[A]_{6}$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$B$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$B \to C$}
+\AxiomC{$[A \to A \to B]_{1}$}
+\AxiomC{$[A]_{6}$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$A \to B$}
+\AxiomC{$[A]_{6}$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$B$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$C$}
+
+\end{prooftree}
+\subsection*{Subproof 4}
+\begin{prooftree}
+\AxiomC{$[B \to B \to C]_{2}$}
+\AxiomC{$[A \to A \to B]_{1}$}
+\AxiomC{$[A]_{6}$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$A \to B$}
+\AxiomC{$[A]_{6}$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$B$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$B \to C$}
+\AxiomC{$[A \to A \to B]_{1}$}
+\AxiomC{$[A]_{6}$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$A \to B$}
+\AxiomC{$[A]_{6}$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$B$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$C$}
+
+\end{prooftree}
+\subsection*{Subproof 5}
+\begin{prooftree}
+\AxiomC{$[B \to B \to C]_{2}$}
+\AxiomC{$[A \to A \to B]_{1}$}
+\AxiomC{$[A]_{6}$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$A \to B$}
+\AxiomC{$[A]_{6}$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$B$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$B \to C$}
+\AxiomC{$[A \to A \to B]_{1}$}
+\AxiomC{$[A]_{6}$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$A \to B$}
+\AxiomC{$[A]_{6}$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$B$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$C$}
+
+\end{prooftree}
+\subsection*{Subproof 6}
+\begin{prooftree}
+\AxiomC{$[D \to D \to E]_{4}$}
+\AxiomC{$[C \to C \to D]_{3}$}
+\AxiomC{sub 7}
+\noLine
+\UnaryInfC{$\vdots$}
+\noLine
+\UnaryInfC{$C$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$C \to D$}
+\AxiomC{sub 8}
+\noLine
+\UnaryInfC{$\vdots$}
+\noLine
+\UnaryInfC{$C$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$D$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$D \to E$}
+\AxiomC{$[C \to C \to D]_{3}$}
+\AxiomC{sub 9}
+\noLine
+\UnaryInfC{$\vdots$}
+\noLine
+\UnaryInfC{$C$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$C \to D$}
+\AxiomC{sub 10}
+\noLine
+\UnaryInfC{$\vdots$}
+\noLine
+\UnaryInfC{$C$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$D$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$E$}
+
+\end{prooftree}
+\subsection*{Subproof 7}
+\begin{prooftree}
+\AxiomC{$[B \to B \to C]_{2}$}
+\AxiomC{$[A \to A \to B]_{1}$}
+\AxiomC{$[A]_{6}$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$A \to B$}
+\AxiomC{$[A]_{6}$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$B$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$B \to C$}
+\AxiomC{$[A \to A \to B]_{1}$}
+\AxiomC{$[A]_{6}$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$A \to B$}
+\AxiomC{$[A]_{6}$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$B$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$C$}
+
+\end{prooftree}
+\subsection*{Subproof 8}
+\begin{prooftree}
+\AxiomC{$[B \to B \to C]_{2}$}
+\AxiomC{$[A \to A \to B]_{1}$}
+\AxiomC{$[A]_{6}$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$A \to B$}
+\AxiomC{$[A]_{6}$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$B$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$B \to C$}
+\AxiomC{$[A \to A \to B]_{1}$}
+\AxiomC{$[A]_{6}$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$A \to B$}
+\AxiomC{$[A]_{6}$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$B$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$C$}
+
+\end{prooftree}
+\subsection*{Subproof 9}
+\begin{prooftree}
+\AxiomC{$[B \to B \to C]_{2}$}
+\AxiomC{$[A \to A \to B]_{1}$}
+\AxiomC{$[A]_{6}$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$A \to B$}
+\AxiomC{$[A]_{6}$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$B$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$B \to C$}
+\AxiomC{$[A \to A \to B]_{1}$}
+\AxiomC{$[A]_{6}$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$A \to B$}
+\AxiomC{$[A]_{6}$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$B$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$C$}
+
+\end{prooftree}
+\subsection*{Subproof 10}
+\begin{prooftree}
+\AxiomC{$[B \to B \to C]_{2}$}
+\AxiomC{$[A \to A \to B]_{1}$}
+\AxiomC{$[A]_{6}$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$A \to B$}
+\AxiomC{$[A]_{6}$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$B$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$B \to C$}
+\AxiomC{$[A \to A \to B]_{1}$}
+\AxiomC{$[A]_{6}$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$A \to B$}
+\AxiomC{$[A]_{6}$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$B$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$C$}
+
+\end{prooftree}
+
+
+
+
+\end{document}

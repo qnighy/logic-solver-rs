@@ -61,6 +61,15 @@ pub(crate) fn write_nj_latex(pf: &VisibleProof, f: &mut fmt::Formatter) -> fmt::
             write_prop_latex(&pf.prop, f)?;
             f.write_str("$}\n")?;
         }
+        VisibleProofKind::SplitRef(split_proof_id) => {
+            writeln!(f, "\\AxiomC{{sub {}}}", split_proof_id.0)?;
+            writeln!(f, "\\noLine")?;
+            writeln!(f, "\\UnaryInfC{{$\\vdots$}}")?;
+            writeln!(f, "\\noLine")?;
+            f.write_str("\\UnaryInfC{$")?;
+            write_prop_latex(&pf.prop, f)?;
+            f.write_str("$}\n")?;
+        }
     }
     Ok(())
 }

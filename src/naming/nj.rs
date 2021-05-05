@@ -81,6 +81,7 @@ fn promote_nj_rec(
     VisibleProof {
         kind,
         prop: promote_prop(&pf.prop, env),
+        split_here: false,
     }
 }
 
@@ -125,8 +126,10 @@ mod tests {
                     subproofs: vec![VisibleProof {
                         prop: PropAst::Atom(S("A")),
                         kind: VisibleProofKind::Axiom(HypothesisId(1)),
+                        split_here: false,
                     },],
-                }
+                },
+                split_here: false,
             }
         )
     }

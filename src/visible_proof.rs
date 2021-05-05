@@ -4,6 +4,7 @@ use crate::parsing::Prop as PropAst;
 pub struct VisibleProof {
     pub prop: PropAst,
     pub kind: VisibleProofKind,
+    pub split_here: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -15,6 +16,7 @@ pub enum VisibleProofKind {
         introduces: Option<HypothesisId>,
         subproofs: Vec<VisibleProof>,
     },
+    SplitRef(SplitProofId),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -33,6 +35,9 @@ impl HypothesisGen {
         HypothesisId(self.0)
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct SplitProofId(pub usize);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RuleName {

@@ -12,14 +12,14 @@
 
   {
     \huge
-<% match proof %>
-<% when Some with (proof) %>
+<% if provable %>
+
     \cmark
     Provable
-<% when None %>
+<% else %>
     \xmark
     Not provable
-<% endmatch %>
+<% endif %>
   }
   \\\hline
 \end{tabular}
@@ -29,16 +29,18 @@
 
 $<= prop %>$
 
-<% match proof %>
-<% when Some with (proof) %>
+<% if provable %>
+
 
 \section*{Proof}
-
+<% for (name, proof) in proofs -%>
+<%- if proofs.len() > 1 -%>
+\subsection*{<= name %>}
+<% endif -%>
 \begin{prooftree}
 <= proof %>
 \end{prooftree}
-
-<% when None %>
-<% endmatch %>
+<% endfor -%>
+<%- endif %>
 
 <% endblock %>
