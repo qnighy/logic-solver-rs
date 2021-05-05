@@ -70,10 +70,10 @@ $A \to B \to A$
 \section*{Proof}
 
 \begin{prooftree}
-\AxiomC{$[A]_{H1}$}
-\RightLabel{\scriptsize${\to}_I (H2)$}
+\AxiomC{$[A]_{1}$}
+\RightLabel{\scriptsize${\to}_I (2)$}
 \UnaryInfC{$B \to A$}
-\RightLabel{\scriptsize${\to}_I (H1)$}
+\RightLabel{\scriptsize${\to}_I (1)$}
 \UnaryInfC{$A \to B \to A$}
 
 \end{prooftree}

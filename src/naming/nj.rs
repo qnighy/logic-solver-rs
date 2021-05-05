@@ -2,29 +2,29 @@ use super::prop::promote_prop;
 use crate::debruijn::DbCtx;
 use crate::nj::{Proof, ProofKind};
 use crate::prop::Env;
-use crate::visible_proof::{RuleName, VisibleProof, VisibleProofKind};
+use crate::visible_proof::{HypothesisGen, HypothesisId, RuleName, VisibleProof, VisibleProofKind};
 
 pub fn promote_nj(pf: &Proof, env: &Env) -> VisibleProof {
     let mut ctx = DbCtx::new();
-    let mut ctr = HypothesisCounter::new();
+    let mut ctr = HypothesisGen::new();
     promote_nj_rec(pf, env, &mut ctx, &mut ctr)
 }
 
 fn promote_nj_rec(
     pf: &Proof,
     env: &Env,
-    ctx: &mut DbCtx<String>,
-    ctr: &mut HypothesisCounter,
+    ctx: &mut DbCtx<HypothesisId>,
+    ctr: &mut HypothesisGen,
 ) -> VisibleProof {
     let kind = match pf.kind {
-        ProofKind::Var(idx) => VisibleProofKind::Axiom(ctx[idx].clone()),
+        ProofKind::Var(idx) => VisibleProofKind::Axiom(ctx[idx]),
         ProofKind::Abs(ref body) => {
-            let hyp_name = ctr.fresh();
-            let mut ctx = ctx.push(hyp_name.clone());
+            let hyp_id = ctr.fresh();
+            let mut ctx = ctx.push(hyp_id);
             let body = promote_nj_rec(body, env, &mut ctx, ctr);
             VisibleProofKind::SubProof {
                 rule: RuleName::ImplIntro,
-                introduces: Some(hyp_name),
+                introduces: Some(hyp_id),
                 subproofs: vec![body],
             }
         }
@@ -84,20 +84,6 @@ fn promote_nj_rec(
     }
 }
 
-#[derive(Debug)]
-struct HypothesisCounter(usize);
-
-impl HypothesisCounter {
-    fn new() -> Self {
-        Self(0)
-    }
-
-    fn fresh(&mut self) -> String {
-        self.0 += 1;
-        format!("H{}", self.0)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -135,10 +121,10 @@ mod tests {
                 ),
                 kind: VisibleProofKind::SubProof {
                     rule: RuleName::ImplIntro,
-                    introduces: Some(S("H1")),
+                    introduces: Some(HypothesisId(1)),
                     subproofs: vec![VisibleProof {
                         prop: PropAst::Atom(S("A")),
-                        kind: VisibleProofKind::Axiom(S("H1")),
+                        kind: VisibleProofKind::Axiom(HypothesisId(1)),
                     },],
                 }
             }

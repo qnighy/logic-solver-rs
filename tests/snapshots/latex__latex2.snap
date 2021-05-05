@@ -70,8 +70,8 @@ $A \to A$
 \section*{Proof}
 
 \begin{prooftree}
-\AxiomC{$[A]_{H1}$}
-\RightLabel{\scriptsize${\to}_I (H1)$}
+\AxiomC{$[A]_{1}$}
+\RightLabel{\scriptsize${\to}_I (1)$}
 \UnaryInfC{$A \to A$}
 
 \end{prooftree}
