@@ -18,6 +18,7 @@ pub mod prop;
 pub mod rollback;
 #[cfg(test)]
 mod tests;
+pub mod visible_proof;
 
 #[derive(Debug, Error)]
 enum LogicSolverError {
