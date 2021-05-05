@@ -11,8 +11,14 @@
 
   {
     \huge
+<% match proof %>
+<% when Some with (proof) %>
     \cmark
     Provable
+<% when None %>
+    \xmark
+    Not provable
+<% endmatch %>
   }
   \\\hline
 \end{tabular}
@@ -20,5 +26,17 @@
 \section*{Input}
 
 $<= prop %>$
+
+<% match proof %>
+<% when Some with (proof) %>
+
+\section*{Proof}
+
+\begin{prooftree}
+<= proof %>
+\end{prooftree}
+
+<% when None %>
+<% endmatch %>
 
 <% endblock %>

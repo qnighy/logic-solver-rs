@@ -47,13 +47,17 @@ pub(super) fn prop_latex(prop: &PropAst) -> String {
     struct D<'a>(&'a PropAst);
     impl fmt::Display for D<'_> {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            write_prop_latex(self.0, Precedence::Impl, true, f)
+            write_prop_latex(self.0, f)
         }
     }
     D(prop).to_string()
 }
 
-fn write_prop_latex(
+pub(super) fn write_prop_latex(prop: &PropAst, f: &mut fmt::Formatter) -> fmt::Result {
+    write_prop_latex_prec(prop, Precedence::Impl, true, f)
+}
+
+fn write_prop_latex_prec(
     prop: &PropAst,
     pprec: Precedence,
     allow_same: bool,
@@ -66,9 +70,9 @@ fn write_prop_latex(
     match *prop {
         PropAst::Atom(ref name) => f.write_str(name)?,
         PropAst::Impl(ref lhs, ref rhs) => {
-            write_prop_latex(lhs, prec, false, f)?;
+            write_prop_latex_prec(lhs, prec, false, f)?;
             f.write_str(" \\to ")?;
-            write_prop_latex(rhs, prec, true, f)?;
+            write_prop_latex_prec(rhs, prec, true, f)?;
         }
         PropAst::Conj(ref children) if children.len() == 0 => {
             f.write_str("\\top")?;
@@ -78,7 +82,7 @@ fn write_prop_latex(
                 if i > 0 {
                     f.write_str(" \\wedge ")?;
                 }
-                write_prop_latex(child, prec, false, f)?;
+                write_prop_latex_prec(child, prec, false, f)?;
             }
         }
         PropAst::Disj(ref children) if children.len() == 0 => {
@@ -89,7 +93,7 @@ fn write_prop_latex(
                 if i > 0 {
                     f.write_str(" \\vee ")?;
                 }
-                write_prop_latex(child, prec, false, f)?;
+                write_prop_latex_prec(child, prec, false, f)?;
             }
         }
     }

@@ -4,7 +4,7 @@ use thiserror::Error;
 
 use crate::ipc::solve;
 use crate::latex::{parse_error_latex, success_latex};
-use crate::naming::lower_prop;
+use crate::naming::{lower_prop, promote_nj};
 use crate::parsing::{parse_prop, ParseError};
 use crate::prop::{Env, IdGen};
 
@@ -74,8 +74,12 @@ fn main2() -> Result<(), LogicSolverError> {
             }
         };
         let prop = lower_prop(&mut idgen, &mut env, &ast);
-        let _pf = solve(&prop).expect("TODO: non-provable case");
-        let latex_src = success_latex(&ast);
+        let pf = if let Some(pf) = solve(&prop) {
+            Some(promote_nj(&pf, &env))
+        } else {
+            None
+        };
+        let latex_src = success_latex(&ast, pf.as_ref());
         let stdout = io::stdout();
         let mut stdout = stdout.lock();
         stdout.write_all(latex_src.as_bytes())?;
