@@ -3,13 +3,14 @@ source: tests/latex.rs
 expression: "run(\"A → A\")"
 
 ---
-\documentclass{article}
+\documentclass[a4paper,twoside=false,DIV=16]{scrartcl}
 \usepackage{bussproofs}
 \usepackage{colortbl}
 \usepackage{varwidth}
 \usepackage{pifont}
 \usepackage{xcolor}
 \usepackage{listings}
+\usepackage{xpatch}
 
 \newcommand{\cmark}{\textcolor{blue}{\ding{52}}}%
 \newcommand{\xmark}{\textcolor{red}{\ding{56}}}%
@@ -35,11 +36,32 @@ expression: "run(\"A → A\")"
 
 \title{Logic solver result}
 
+\makeatletter
+% remove author, date, publishers
+\xpatchcmd{\@maketitle}
+  {%
+    {%
+      \usekomafont{author}{%
+        \lineskip .5em%
+        \begin{tabular}[t]{c}
+          \@author
+        \end{tabular}\par
+      }%
+    }%
+    \vskip 1em%
+    {\usekomafont{date}{\@date \par}}%
+    \vskip \z@ \@plus 1em
+    {\usekomafont{publishers}{\@publishers \par}}%
+  }
+  {}{}{\PatchFailed}
+\makeatother
+
 \begin{document}
 
 \maketitle
 
 
+\begin{center}
 \begin{tabular}{|c|}
   \hline
   \cellcolor[gray]{0.8}
@@ -59,6 +81,7 @@ expression: "run(\"A → A\")"
   }
   \\\hline
 \end{tabular}
+\end{center}
 
 \section*{Input}
 

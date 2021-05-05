@@ -1,10 +1,11 @@
-\documentclass{article}
+\documentclass[a4paper,twoside=false,DIV=16]{scrartcl}
 \usepackage{bussproofs}
 \usepackage{colortbl}
 \usepackage{varwidth}
 \usepackage{pifont}
 \usepackage{xcolor}
 \usepackage{listings}
+\usepackage{xpatch}
 
 \newcommand{\cmark}{\textcolor{blue}{\ding{52}}}%
 \newcommand{\xmark}{\textcolor{red}{\ding{56}}}%
@@ -29,6 +30,26 @@
 }
 
 \title{Logic solver result}
+
+\makeatletter
+% remove author, date, publishers
+\xpatchcmd{\@maketitle}
+  {%
+    {%
+      \usekomafont{author}{%
+        \lineskip .5em%
+        \begin{tabular}[t]{c}
+          \@author
+        \end{tabular}\par
+      }%
+    }%
+    \vskip 1em%
+    {\usekomafont{date}{\@date \par}}%
+    \vskip \z@ \@plus 1em
+    {\usekomafont{publishers}{\@publishers \par}}%
+  }
+  {}{}{\PatchFailed}
+\makeatother
 
 \begin{document}
 
