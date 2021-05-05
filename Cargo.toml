@@ -17,6 +17,7 @@ askama = "0.10.5"
 [dev-dependencies]
 big_s = "1.0.2"
 maplit = "1.0.2"
+insta = "1.7.1"
 
 [patch.crates-io]
 # https://github.com/bitvecto-rs/bitvec/issues/105

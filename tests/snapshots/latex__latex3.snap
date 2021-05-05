@@ -1,0 +1,82 @@
+---
+source: tests/latex.rs
+expression: "run(\"A → B → A\")"
+
+---
+\documentclass{article}
+\usepackage{bussproofs}
+\usepackage{colortbl}
+\usepackage{varwidth}
+\usepackage{pifont}
+\usepackage{xcolor}
+\usepackage{listings}
+
+\newcommand{\cmark}{\textcolor{blue}{\ding{52}}}%
+\newcommand{\xmark}{\textcolor{red}{\ding{56}}}%
+
+\lstset{%
+  basicstyle={\small},%
+  identifierstyle={\small},%
+  commentstyle={\small\itshape},%
+  keywordstyle={\small\bfseries},%
+  ndkeywordstyle={\small},%
+  stringstyle={\small\ttfamily},
+  frame={tb},
+  breaklines=true,
+  columns=[l]{fullflexible},%
+  numbers=left,%
+  xrightmargin=0em,%
+  xleftmargin=3em,%
+  numberstyle={\scriptsize},%
+  stepnumber=1,
+  numbersep=1em,%
+  lineskip=-0.5ex%
+}
+
+\title{Logic solver result}
+
+\begin{document}
+
+\maketitle
+
+
+\begin{tabular}{|c|}
+  \hline
+  \cellcolor[gray]{0.8}
+  \begin{minipage}{10cm}
+    \centering
+    Result
+  \end{minipage}
+  \\\hline
+
+  {
+    \huge
+
+
+    \cmark
+    Provable
+
+  }
+  \\\hline
+\end{tabular}
+
+\section*{Input}
+
+$A \to B \to A$
+
+
+
+
+\section*{Proof}
+
+\begin{prooftree}
+\AxiomC{[$A$]}
+\UnaryInfC{$B \to A$}
+\UnaryInfC{$A \to B \to A$}
+
+\end{prooftree}
+
+
+
+
+\end{document}
