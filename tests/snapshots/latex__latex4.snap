@@ -71,15 +71,22 @@ $(A \to B \to A) \wedge (A \vee B \to B \vee A)$
 
 \begin{prooftree}
 \AxiomC{[$A$]}
+\RightLabel{\scriptsize${\to}_I$}
 \UnaryInfC{$B \to A$}
+\RightLabel{\scriptsize${\to}_I$}
 \UnaryInfC{$A \to B \to A$}
 \AxiomC{[$A \vee B$]}
 \AxiomC{[$A$]}
+\RightLabel{\scriptsize${\vee}_{I 2}$}
 \UnaryInfC{$B \vee A$}
 \AxiomC{[$B$]}
+\RightLabel{\scriptsize${\vee}_{I 1}$}
 \UnaryInfC{$B \vee A$}
+\RightLabel{\scriptsize${\vee}_E$}
 \TrinaryInfC{$B \vee A$}
+\RightLabel{\scriptsize${\to}_I$}
 \UnaryInfC{$A \vee B \to B \vee A$}
+\RightLabel{\scriptsize${\wedge}_I$}
 \BinaryInfC{$(A \to B \to A) \wedge (A \vee B \to B \vee A)$}
 
 \end{prooftree}

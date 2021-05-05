@@ -71,6 +71,7 @@ $A \to A$
 
 \begin{prooftree}
 \AxiomC{[$A$]}
+\RightLabel{\scriptsize${\to}_I$}
 \UnaryInfC{$A \to A$}
 
 \end{prooftree}

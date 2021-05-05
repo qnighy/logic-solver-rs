@@ -11,7 +11,17 @@ pub enum VisibleProofKind {
     Open,
     Axiom(String),
     SubProof {
-        // name: RuleName
+        rule: RuleName,
         subproofs: Vec<VisibleProof>,
     },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RuleName {
+    ImplIntro,
+    ImplElim,
+    ConjIntro(usize),
+    ConjElim(usize, usize),
+    DisjIntro(usize, usize),
+    DisjElim(usize),
 }

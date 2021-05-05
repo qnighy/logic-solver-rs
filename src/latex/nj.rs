@@ -1,7 +1,7 @@
 use std::fmt;
 
 use super::prop::write_prop_latex;
-use crate::visible_proof::{VisibleProof, VisibleProofKind};
+use crate::visible_proof::{RuleName, VisibleProof, VisibleProofKind};
 
 pub(super) fn nj_latex(pf: &VisibleProof) -> String {
     struct D<'a>(&'a VisibleProof);
@@ -34,16 +34,28 @@ pub(crate) fn write_nj_latex(pf: &VisibleProof, f: &mut fmt::Formatter) -> fmt::
             write_prop_latex(&pf.prop, f)?;
             f.write_str("$}\n")?;
         }
-        VisibleProofKind::SubProof { ref subproofs } if subproofs.len() == 0 => {
+        VisibleProofKind::SubProof {
+            rule,
+            ref subproofs,
+        } if subproofs.len() == 0 => {
+            f.write_str("\\RightLabel{\\scriptsize")?;
+            write_rule_latex(rule, f)?;
+            f.write_str("}\n")?;
             f.write_str("\\AxiomC{}\n")?;
             f.write_str("\\UnaryInfC{$")?;
             write_prop_latex(&pf.prop, f)?;
             f.write_str("$}\n")?;
         }
-        VisibleProofKind::SubProof { ref subproofs } => {
+        VisibleProofKind::SubProof {
+            rule,
+            ref subproofs,
+        } => {
             for subproof in subproofs {
                 write_nj_latex(subproof, f)?;
             }
+            f.write_str("\\RightLabel{\\scriptsize")?;
+            write_rule_latex(rule, f)?;
+            f.write_str("}\n")?;
             // TODO: more than 5 branches
             let cmd = NARY[subproofs.len()];
             f.write_str("\\")?;
@@ -53,5 +65,29 @@ pub(crate) fn write_nj_latex(pf: &VisibleProof, f: &mut fmt::Formatter) -> fmt::
             f.write_str("$}\n")?;
         }
     }
+    Ok(())
+}
+
+pub(crate) fn write_rule_latex(rule: RuleName, f: &mut fmt::Formatter) -> fmt::Result {
+    f.write_str("$")?;
+    match rule {
+        RuleName::ImplIntro => f.write_str("{\\to}_I")?,
+        RuleName::ImplElim => f.write_str("{\\to}_E")?,
+        RuleName::ConjIntro(0) => f.write_str("{\\top}_I")?,
+        RuleName::ConjIntro(_) => f.write_str("{\\wedge}_I")?,
+        RuleName::ConjElim(i, _) => {
+            f.write_str("{\\wedge}_{E ")?;
+            write!(f, "{}", i + 1)?;
+            f.write_str("}")?;
+        }
+        RuleName::DisjIntro(i, _) => {
+            f.write_str("{\\vee}_{I ")?;
+            write!(f, "{}", i + 1)?;
+            f.write_str("}")?;
+        }
+        RuleName::DisjElim(0) => f.write_str("{\\bot}_E")?,
+        RuleName::DisjElim(_) => f.write_str("{\\vee}_E")?,
+    }
+    f.write_str("$")?;
     Ok(())
 }

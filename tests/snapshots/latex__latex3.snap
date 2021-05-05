@@ -71,7 +71,9 @@ $A \to B \to A$
 
 \begin{prooftree}
 \AxiomC{[$A$]}
+\RightLabel{\scriptsize${\to}_I$}
 \UnaryInfC{$B \to A$}
+\RightLabel{\scriptsize${\to}_I$}
 \UnaryInfC{$A \to B \to A$}
 
 \end{prooftree}
