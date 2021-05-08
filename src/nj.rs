@@ -34,6 +34,24 @@ pub enum ProofKind {
 #[derive(Debug, Clone, Copy)]
 pub struct TypeError;
 
+macro_rules! assert_eqtype {
+    ($lhs:expr, $rhs:expr) => {
+        match (&$lhs, &$rhs) {
+            (lhs, rhs) => {
+                if !Prop::eqtype(lhs, rhs) {
+                    panic!(
+                        "assert_eqtype!({}, {})\n\n    left  = {:?}\n    right = {:?}\n\n",
+                        stringify!($lhs),
+                        stringify!($rhs),
+                        lhs,
+                        rhs
+                    );
+                }
+            }
+        }
+    };
+}
+
 impl Proof {
     pub fn check_has_type(&self, prop: &Prop) {
         self.check_has_type_in(&mut DbCtx::new(), prop);
@@ -44,14 +62,14 @@ impl Proof {
     }
 
     pub fn check_has_type_in(&self, ctx: &mut DbCtx<Prop>, prop: &Prop) {
-        assert_eq!(self.prop, *prop);
+        assert_eqtype!(self.prop, *prop);
         self.check_type_in(ctx);
     }
 
     pub fn check_type_in(&self, ctx: &mut DbCtx<Prop>) {
         match self.kind {
             ProofKind::Var(idx) => {
-                assert_eq!(ctx[idx], self.prop);
+                assert_eqtype!(ctx[idx], self.prop);
             }
             ProofKind::Abs(ref body) => {
                 let (abstype, body_type) = self.prop.as_impl().unwrap();
@@ -60,7 +78,7 @@ impl Proof {
             }
             ProofKind::App(ref lhs, ref rhs) => {
                 let (ltl, ltr) = lhs.prop.as_impl().unwrap();
-                assert_eq!(*ltr, self.prop);
+                assert_eqtype!(*ltr, self.prop);
                 lhs.check_type_in(ctx);
                 rhs.check_has_type_in(ctx, ltl);
             }
@@ -74,7 +92,7 @@ impl Proof {
             ProofKind::ConjElim(ref sub, i, n) => {
                 let child_types = sub.prop.as_conj().unwrap();
                 assert_eq!(child_types.len(), n);
-                assert_eq!(child_types[i], self.prop);
+                assert_eqtype!(child_types[i], self.prop);
                 sub.check_type_in(ctx);
             }
             ProofKind::DisjIntro(ref sub, i, n) => {
