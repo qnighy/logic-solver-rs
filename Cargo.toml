@@ -13,6 +13,7 @@ clap = "2.33.3"
 structopt = "0.3.21"
 thiserror = "1.0.24"
 askama = "0.10.5"
+varisat = "0.2.2"
 
 [dev-dependencies]
 big_s = "1.0.2"
