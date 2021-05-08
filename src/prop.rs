@@ -6,6 +6,8 @@ pub enum Prop {
     Impl(Box<Prop>, Box<Prop>),
     Conj(Vec<Prop>),
     Disj(Vec<Prop>),
+    Equiv(Box<Prop>, Box<Prop>),
+    Neg(Box<Prop>),
 }
 
 impl Prop {
@@ -45,6 +47,16 @@ impl Prop {
     pub fn ImplS(lhs: Prop, rhs: Prop) -> Self {
         Self::Impl(Box::new(lhs), Box::new(rhs))
     }
+
+    #[allow(non_snake_case)]
+    pub fn EquivS(lhs: Prop, rhs: Prop) -> Self {
+        Self::Equiv(Box::new(lhs), Box::new(rhs))
+    }
+
+    #[allow(non_snake_case)]
+    pub fn NegS(sub: Prop) -> Self {
+        Self::Neg(Box::new(sub))
+    }
 }
 
 #[allow(non_snake_case)]
@@ -55,6 +67,16 @@ pub mod PropShorthands {
     #[allow(non_snake_case)]
     pub fn ImplS(lhs: Prop, rhs: Prop) -> Prop {
         Prop::ImplS(lhs, rhs)
+    }
+
+    #[allow(non_snake_case)]
+    pub fn EquivS(lhs: Prop, rhs: Prop) -> Prop {
+        Prop::EquivS(lhs, rhs)
+    }
+
+    #[allow(non_snake_case)]
+    pub fn NegS(sub: Prop) -> Prop {
+        Prop::NegS(sub)
     }
 }
 

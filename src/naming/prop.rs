@@ -27,8 +27,15 @@ pub fn lower_prop(idgen: &mut IdGen, env: &mut Env, ast: &PropAst) -> Prop {
                 .collect::<Vec<_>>();
             Prop::Disj(children)
         }
-        PropAst::Equiv(_, _) => todo!(),
-        PropAst::Neg(_) => todo!(),
+        PropAst::Equiv(lhs, rhs) => {
+            let lhs = lower_prop(idgen, env, lhs);
+            let rhs = lower_prop(idgen, env, rhs);
+            Prop::EquivS(lhs, rhs)
+        }
+        PropAst::Neg(sub) => {
+            let sub = lower_prop(idgen, env, sub);
+            Prop::NegS(sub)
+        }
     }
 }
 
@@ -53,6 +60,15 @@ pub fn promote_prop(prop: &Prop, env: &Env) -> PropAst {
                 .map(|child| promote_prop(child, env))
                 .collect::<Vec<_>>();
             PropAst::Disj(children)
+        }
+        Prop::Equiv(lhs, rhs) => {
+            let lhs = promote_prop(lhs, env);
+            let rhs = promote_prop(rhs, env);
+            PropAst::Equiv(Box::new(lhs), Box::new(rhs))
+        }
+        Prop::Neg(sub) => {
+            let sub = promote_prop(sub, env);
+            PropAst::Neg(Box::new(sub))
         }
     }
 }

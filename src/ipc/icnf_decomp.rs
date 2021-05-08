@@ -204,6 +204,8 @@ impl PropMap {
                     .collect::<Vec<_>>();
                 ShallowProp::Disj(children)
             }
+            Prop::Equiv(_, _) => todo!(),
+            Prop::Neg(_) => todo!(),
         };
         self.shallow_insert_prop(vargen, &sp)
     }
