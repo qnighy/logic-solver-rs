@@ -19,9 +19,9 @@ impl<'a> From<&'a PropAst> for Precedence {
         match *prop {
             PropAst::Atom(_) => Primary,
             PropAst::Impl(_, _) => Impl,
-            PropAst::Conj(ref children) if children.len() == 0 => Primary,
+            PropAst::Conj(ref children) if children.is_empty() => Primary,
             PropAst::Conj(_) => Conj,
-            PropAst::Disj(ref children) if children.len() == 0 => Primary,
+            PropAst::Disj(ref children) if children.is_empty() => Primary,
             PropAst::Disj(_) => Disj,
             PropAst::Equiv(_, _) => Equiv,
             PropAst::Neg(_) => Neg,
@@ -103,7 +103,7 @@ fn write_prop_latex_prec(
             f.write_str(" \\to ")?;
             write_prop_latex_prec(rhs, prec, true, f)?;
         }
-        PropAst::Conj(ref children) if children.len() == 0 => {
+        PropAst::Conj(ref children) if children.is_empty() => {
             f.write_str("\\top")?;
         }
         PropAst::Conj(ref children) => {
@@ -114,7 +114,7 @@ fn write_prop_latex_prec(
                 write_prop_latex_prec(child, prec, false, f)?;
             }
         }
-        PropAst::Disj(ref children) if children.len() == 0 => {
+        PropAst::Disj(ref children) if children.is_empty() => {
             f.write_str("\\bot")?;
         }
         PropAst::Disj(ref children) => {

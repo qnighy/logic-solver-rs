@@ -72,7 +72,7 @@ impl ClauseSet {
         id
     }
 
-    pub fn enumerate<'a>(&'a self) -> impl Iterator<Item = (ClId, &'a Clause)> {
+    pub fn enumerate(&self) -> impl Iterator<Item = (ClId, &Clause)> {
         self.vec.iter().enumerate().map(|(i, cl)| (ClId(i), cl))
     }
 }

@@ -161,7 +161,7 @@ pub struct PropMap {
 }
 
 impl PropMap {
-    pub fn iter<'a>(&'a self) -> impl Iterator<Item = (Var, &'a ShallowProp)> {
+    pub fn iter(&self) -> impl Iterator<Item = (Var, &ShallowProp)> {
         self.vars
             .iter()
             .enumerate()

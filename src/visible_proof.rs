@@ -22,12 +22,12 @@ pub enum VisibleProofKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct HypothesisId(pub u32);
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct HypothesisGen(u32);
 
 impl HypothesisGen {
     pub fn new() -> Self {
-        Self(0)
+        Self::default()
     }
 
     pub fn fresh(&mut self) -> HypothesisId {

@@ -27,7 +27,7 @@ pub(crate) fn write_nj_latex(pf: &VisibleProof, f: &mut fmt::Formatter) -> fmt::
         VisibleProofKind::Axiom(ref hyp_id) => {
             f.write_str("\\AxiomC{$[")?;
             write_prop_latex(&pf.prop, f)?;
-            write!(f, "]_{{{}}}$}}\n", hyp_id.0)?;
+            writeln!(f, "]_{{{}}}$}}", hyp_id.0)?;
         }
         VisibleProofKind::Open => {
             f.write_str("\\AxiomC{$")?;
@@ -48,7 +48,7 @@ pub(crate) fn write_nj_latex(pf: &VisibleProof, f: &mut fmt::Formatter) -> fmt::
                 write!(f, " ({})", introduces.0)?;
             }
             f.write_str("$}\n")?;
-            if subproofs.len() == 0 {
+            if subproofs.is_empty() {
                 f.write_str("\\AxiomC{}\n")?;
                 f.write_str("\\UnaryInfC{$")?;
             } else {

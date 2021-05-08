@@ -174,14 +174,14 @@ impl Env {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct IdGen {
     next_id: usize,
 }
 
 impl IdGen {
     pub fn new() -> Self {
-        Self { next_id: 0 }
+        Self::default()
     }
 
     pub fn fresh(&mut self) -> Id {

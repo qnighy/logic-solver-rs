@@ -113,7 +113,7 @@ fn register<S: ExtendFormula>(
                     s.add_clause(&sat_cl);
                 }
             }
-            &Clause::Disj(ref lhs, ref rhs) => {
+            Clause::Disj(lhs, rhs) => {
                 for w in 0..num_worlds {
                     sat_cl.clear();
                     for &v in lhs {

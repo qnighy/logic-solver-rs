@@ -65,7 +65,7 @@ fn mark_split(pf: &mut VisibleProof) -> (u32, u32) {
             if weight > LIMIT {
                 let mut indices = (0..subproofs.len()).collect::<Vec<_>>();
                 indices.sort_by_key(|&i| weights[i].1 - weights[i].0);
-                while weight > LIMIT && indices.len() > 0 {
+                while weight > LIMIT && !indices.is_empty() {
                     let i = indices.pop().unwrap();
                     let diff = weights[i].1 - weights[i].0;
                     if diff == 0 {

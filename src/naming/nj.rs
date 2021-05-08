@@ -68,7 +68,7 @@ fn promote_nj_rec(
             let mut children = vec![promote_nj_rec(sub, env, ctx, ctr)];
             let hyp_name = ctr.fresh();
             for branch in branches {
-                let mut ctx = ctx.push(hyp_name.clone());
+                let mut ctx = ctx.push(hyp_name);
                 children.push(promote_nj_rec(branch, env, &mut ctx, ctr));
             }
             VisibleProofKind::SubProof {

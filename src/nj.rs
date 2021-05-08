@@ -174,7 +174,9 @@ impl Proof {
 
     pub fn subst(&mut self, target: Idx, repl: &Proof, by: usize) {
         match self.kind {
-            ProofKind::Var(ref mut idx) => {
+            ProofKind::Var(ref mut idx) =>
+            {
+                #[allow(clippy::comparison_chain)]
                 if *idx > target {
                     idx.0 -= 1
                 } else if *idx == target {

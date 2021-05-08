@@ -52,13 +52,13 @@ fn solve_dfs(ant: &ClauseSet, goal: Var, truth: &TruthTable) -> Option<Trace> {
                     continue;
                 }
                 let sub0 = {
-                    let mut truth = truth.set_temp(a, true);
-                    solve_dfs(ant, b, &mut truth)
+                    let truth = truth.set_temp(a, true);
+                    solve_dfs(ant, b, &truth)
                 };
                 if let Some(sub0) = sub0 {
                     let sub1 = {
-                        let mut truth = truth.set_temp(c, true);
-                        solve_dfs(ant, goal, &mut truth)
+                        let truth = truth.set_temp(c, true);
+                        solve_dfs(ant, goal, &truth)
                     };
                     if let Some(sub1) = sub1 {
                         return Some(Trace::Impl(cl_id, Box::new(sub0), Box::new(sub1)));
@@ -75,8 +75,8 @@ fn solve_dfs(ant: &ClauseSet, goal: Var, truth: &TruthTable) -> Option<Trace> {
                 let children = rhs
                     .iter()
                     .map(|&option| {
-                        let mut truth = truth.set_temp(option, true);
-                        solve_dfs(ant, goal, &mut truth)
+                        let truth = truth.set_temp(option, true);
+                        solve_dfs(ant, goal, &truth)
                     })
                     .collect::<Option<Vec<_>>>();
                 if let Some(children) = children {

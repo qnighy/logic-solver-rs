@@ -56,21 +56,13 @@ impl<'a> Tokenizer<'a> {
     fn parse_token(&mut self) -> Option<Token> {
         self.skip_spaces();
         let start = self.pos;
-        let kind = self.parse_token_kind();
+        let kind = self.parse_token_kind()?;
         let end = self.pos;
-        if let Some(kind) = kind {
-            Some(Token { kind, start, end })
-        } else {
-            None
-        }
+        Some(Token { kind, start, end })
     }
 
     fn parse_token_kind(&mut self) -> Option<TokenKind> {
-        let next = if let Some(next) = self.peek() {
-            next
-        } else {
-            return None;
-        };
+        let next = self.peek()?;
         if next.is_ascii_alphabetic() {
             let ident = self.parse_ident();
             Some(TokenKind::Ident(ident))
@@ -106,15 +98,9 @@ impl<'a> Tokenizer<'a> {
         } else {
             let start = self.pos;
             self.bump().unwrap();
-            loop {
-                if let Some(ch) = self.peek() {
-                    if ch.is_ascii_alphabetic()
-                        || ch.is_ascii_whitespace()
-                        || "→∧∨⊤⊥⟂()".contains(ch)
-                    {
-                        break;
-                    }
-                } else {
+            while let Some(ch) = self.peek() {
+                if ch.is_ascii_alphabetic() || ch.is_ascii_whitespace() || "→∧∨⊤⊥⟂()".contains(ch)
+                {
                     break;
                 }
                 self.bump();
