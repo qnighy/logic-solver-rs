@@ -21,6 +21,8 @@ impl<'a> From<&'a PropAst> for Precedence {
             PropAst::Conj(_) => Conj,
             PropAst::Disj(ref children) if children.len() == 0 => Primary,
             PropAst::Disj(_) => Disj,
+            PropAst::Equiv(_, _) => todo!(),
+            PropAst::Neg(_) => todo!(),
         }
     }
 }
@@ -96,6 +98,8 @@ fn write_prop_latex_prec(
                 write_prop_latex_prec(child, prec, false, f)?;
             }
         }
+        PropAst::Equiv(_, _) => todo!(),
+        PropAst::Neg(_) => todo!(),
     }
     if !(prec < pprec || prec <= pprec && allow_same) {
         f.write_str(")")?;

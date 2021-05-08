@@ -17,6 +17,8 @@ pub enum TokenKind {
     Disj,
     Top,
     Bottom,
+    Not,
+    Iff,
     Unknown(String),
     Eof,
 }
@@ -89,6 +91,12 @@ impl<'a> Tokenizer<'a> {
         {
             self.bump();
             Some(TokenKind::Bottom)
+        } else if next == '¬' {
+            self.bump();
+            Some(TokenKind::Not)
+        } else if next == '⇔' {
+            self.bump();
+            Some(TokenKind::Iff)
         } else if next == '(' {
             self.bump();
             Some(TokenKind::LParen)
@@ -389,6 +397,42 @@ mod tests {
             vec![
                 Token {
                     kind: Bottom,
+                    start: pos(0, 0, 0),
+                    end: pos(3, 0, 1)
+                },
+                eof(3, 0, 1),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_not1() {
+        use TokenKind::*;
+
+        let prop = tokenize("¬");
+        assert_eq!(
+            prop,
+            vec![
+                Token {
+                    kind: Not,
+                    start: pos(0, 0, 0),
+                    end: pos(2, 0, 1)
+                },
+                eof(2, 0, 1),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_iff1() {
+        use TokenKind::*;
+
+        let prop = tokenize("⇔");
+        assert_eq!(
+            prop,
+            vec![
+                Token {
+                    kind: Iff,
                     start: pos(0, 0, 0),
                     end: pos(3, 0, 1)
                 },

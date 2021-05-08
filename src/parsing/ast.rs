@@ -4,4 +4,6 @@ pub enum Prop {
     Impl(Box<Prop>, Box<Prop>),
     Conj(Vec<Prop>),
     Disj(Vec<Prop>),
+    Equiv(Box<Prop>, Box<Prop>),
+    Neg(Box<Prop>),
 }

@@ -41,14 +41,25 @@ impl Parser {
         }
     }
 
+    fn parse_neg_prop(&mut self) -> Result<Prop, ParseError> {
+        match self.tokens[self.pos].kind {
+            TokenKind::Not => {
+                self.pos += 1;
+                let sub = self.parse_neg_prop()?;
+                Ok(Prop::Neg(Box::new(sub)))
+            }
+            _ => self.parse_primary_prop(),
+        }
+    }
+
     fn parse_conj_prop(&mut self) -> Result<Prop, ParseError> {
-        let base_prop = self.parse_primary_prop()?;
+        let base_prop = self.parse_neg_prop()?;
         match self.tokens[self.pos].kind {
             TokenKind::Conj => {
                 let mut props = vec![base_prop];
                 while let TokenKind::Conj = self.tokens[self.pos].kind {
                     self.pos += 1;
-                    props.push(self.parse_primary_prop()?);
+                    props.push(self.parse_neg_prop()?);
                 }
                 Ok(Prop::Conj(props))
             }
@@ -71,8 +82,20 @@ impl Parser {
         }
     }
 
-    fn parse_prop(&mut self) -> Result<Prop, ParseError> {
+    fn parse_equiv_prop(&mut self) -> Result<Prop, ParseError> {
         let base_prop = self.parse_disj_prop()?;
+        match self.tokens[self.pos].kind {
+            TokenKind::Iff => {
+                self.pos += 1;
+                let rhs = self.parse_disj_prop()?;
+                Ok(Prop::Equiv(Box::new(base_prop), Box::new(rhs)))
+            }
+            _ => Ok(base_prop),
+        }
+    }
+
+    fn parse_prop(&mut self) -> Result<Prop, ParseError> {
+        let base_prop = self.parse_equiv_prop()?;
         match self.tokens[self.pos].kind {
             TokenKind::Arrow => {
                 self.pos += 1;
@@ -380,6 +403,101 @@ mod tests {
         assert_eq!(
             prop,
             Conj(vec![Atom(S("A")), Disj(vec![Atom(S("B")), Atom(S("C"))])])
+        );
+    }
+
+    #[test]
+    fn test_neg1() {
+        use Prop::*;
+
+        let prop = parse_prop("¬A").unwrap();
+        assert_eq!(prop, Neg(Box::new(Atom(S("A")))));
+    }
+
+    #[test]
+    fn test_neg2() {
+        use Prop::*;
+
+        let prop = parse_prop("¬A ∧ ¬B").unwrap();
+        assert_eq!(
+            prop,
+            Conj(vec![
+                Neg(Box::new(Atom(S("A")))),
+                Neg(Box::new(Atom(S("B"))))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_neg3() {
+        use Prop::*;
+
+        let prop = parse_prop("¬¬(A∨¬A)").unwrap();
+        assert_eq!(
+            prop,
+            Neg(Box::new(Neg(Box::new(Disj(vec![
+                Atom(S("A")),
+                Neg(Box::new(Atom(S("A"))))
+            ])))))
+        );
+    }
+
+    #[test]
+    fn test_iff1() {
+        use Prop::*;
+
+        let prop = parse_prop("A⇔B").unwrap();
+        assert_eq!(prop, Equiv(Box::new(Atom(S("A"))), Box::new(Atom(S("B")))));
+    }
+
+    #[test]
+    fn test_iff2() {
+        use Prop::*;
+
+        let prop = parse_prop("A⇔B→C").unwrap();
+        assert_eq!(
+            prop,
+            Impl(
+                Box::new(Equiv(Box::new(Atom(S("A"))), Box::new(Atom(S("B"))))),
+                Box::new(Atom(S("C")))
+            )
+        );
+    }
+
+    #[test]
+    fn test_iff3() {
+        use Prop::*;
+
+        let prop = parse_prop("A→B⇔C").unwrap();
+        assert_eq!(
+            prop,
+            Impl(
+                Box::new(Atom(S("A"))),
+                Box::new(Equiv(Box::new(Atom(S("B"))), Box::new(Atom(S("C")))))
+            )
+        );
+    }
+
+    #[test]
+    fn test_iff4() {
+        use Prop::*;
+
+        let prop = parse_prop("A∨B⇔B∨A").unwrap();
+        assert_eq!(
+            prop,
+            Equiv(
+                Box::new(Disj(vec![Atom(S("A")), Atom(S("B"))])),
+                Box::new(Disj(vec![Atom(S("B")), Atom(S("A"))]))
+            )
+        );
+    }
+
+    #[test]
+    fn test_iff5() {
+        let err = parse_prop("A⇔B⇔C").unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "parse error at line 1, column 4: unexpected token: Iff"
         );
     }
 

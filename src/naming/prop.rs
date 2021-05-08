@@ -27,6 +27,8 @@ pub fn lower_prop(idgen: &mut IdGen, env: &mut Env, ast: &PropAst) -> Prop {
                 .collect::<Vec<_>>();
             Prop::Disj(children)
         }
+        PropAst::Equiv(_, _) => todo!(),
+        PropAst::Neg(_) => todo!(),
     }
 }
 

@@ -96,5 +96,7 @@ fn prop_weight(prop: &PropAst) -> u32 {
             children.iter().map(|child| prop_weight(child)).sum::<u32>()
                 + (children.len() as u32 - 1)
         }
+        PropAst::Equiv(_, _) => todo!(),
+        PropAst::Neg(_) => todo!(),
     }
 }
