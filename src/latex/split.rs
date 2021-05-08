@@ -90,13 +90,14 @@ fn mark_split(pf: &mut VisibleProof) -> (u32, u32) {
 fn prop_weight(prop: &PropAst) -> u32 {
     match *prop {
         PropAst::Atom(ref name) => name.chars().count() as u32,
-        PropAst::Impl(ref lhs, ref rhs) => prop_weight(lhs) + prop_weight(rhs) + 1,
+        PropAst::Neg(ref sub) => prop_weight(sub) + 1,
+        PropAst::Impl(ref lhs, ref rhs) | PropAst::Equiv(ref lhs, ref rhs) => {
+            prop_weight(lhs) + prop_weight(rhs) + 1
+        }
         PropAst::Conj(ref children) | PropAst::Disj(ref children) if children.is_empty() => 1,
         PropAst::Conj(ref children) | PropAst::Disj(ref children) => {
             children.iter().map(|child| prop_weight(child)).sum::<u32>()
                 + (children.len() as u32 - 1)
         }
-        PropAst::Equiv(_, _) => todo!(),
-        PropAst::Neg(_) => todo!(),
     }
 }

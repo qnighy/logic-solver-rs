@@ -5,8 +5,10 @@ use crate::parsing::Prop as PropAst;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Precedence {
     Primary,
+    Neg,
     Conj,
     Disj,
+    Equiv,
     Impl,
 }
 
@@ -21,8 +23,8 @@ impl<'a> From<&'a PropAst> for Precedence {
             PropAst::Conj(_) => Conj,
             PropAst::Disj(ref children) if children.len() == 0 => Primary,
             PropAst::Disj(_) => Disj,
-            PropAst::Equiv(_, _) => todo!(),
-            PropAst::Neg(_) => todo!(),
+            PropAst::Equiv(_, _) => Equiv,
+            PropAst::Neg(_) => Neg,
         }
     }
 }
@@ -33,13 +35,38 @@ impl PartialOrd for Precedence {
         use Precedence::*;
 
         match (*self, *other) {
-            (Primary, Primary) | (Conj, Conj) | (Disj, Disj) | (Impl, Impl) => Some(Equal),
-            (Primary, Conj) | (Primary, Disj) | (Conj, Impl) | (Disj, Impl) | (Primary, Impl) => {
-                Some(Less)
-            }
-            (Conj, Primary) | (Disj, Primary) | (Impl, Conj) | (Impl, Disj) | (Impl, Primary) => {
-                Some(Greater)
-            }
+            (Primary, Primary)
+            | (Neg, Neg)
+            | (Conj, Conj)
+            | (Disj, Disj)
+            | (Impl, Impl)
+            | (Equiv, Equiv) => Some(Equal),
+            (Primary, Neg)
+            | (Primary, Conj)
+            | (Primary, Disj)
+            | (Primary, Equiv)
+            | (Primary, Impl)
+            | (Neg, Conj)
+            | (Neg, Disj)
+            | (Neg, Equiv)
+            | (Neg, Impl)
+            | (Conj, Equiv)
+            | (Conj, Impl)
+            | (Disj, Equiv)
+            | (Disj, Impl) => Some(Less),
+            (Neg, Primary)
+            | (Conj, Primary)
+            | (Disj, Primary)
+            | (Equiv, Primary)
+            | (Impl, Primary)
+            | (Conj, Neg)
+            | (Disj, Neg)
+            | (Equiv, Neg)
+            | (Impl, Neg)
+            | (Equiv, Conj)
+            | (Impl, Conj)
+            | (Equiv, Disj)
+            | (Impl, Disj) => Some(Greater),
             _ => None,
         }
     }
@@ -98,8 +125,15 @@ fn write_prop_latex_prec(
                 write_prop_latex_prec(child, prec, false, f)?;
             }
         }
-        PropAst::Equiv(_, _) => todo!(),
-        PropAst::Neg(_) => todo!(),
+        PropAst::Equiv(ref lhs, ref rhs) => {
+            write_prop_latex_prec(lhs, prec, false, f)?;
+            f.write_str(" \\Leftrightarrow ")?;
+            write_prop_latex_prec(rhs, prec, false, f)?;
+        }
+        PropAst::Neg(ref sub) => {
+            f.write_str("\\lnot ")?;
+            write_prop_latex_prec(sub, prec, true, f)?;
+        }
     }
     if !(prec < pprec || prec <= pprec && allow_same) {
         f.write_str(")")?;
@@ -139,7 +173,7 @@ mod tests {
     #[test]
     fn test_prec_ordering_sanity() {
         use Precedence::*;
-        const PRECS: &[Precedence] = &[Primary, Conj, Disj, Impl];
+        const PRECS: &[Precedence] = &[Primary, Conj, Disj, Impl, Equiv, Neg];
         for &p1 in PRECS {
             for &p2 in PRECS {
                 assert_eq!(
