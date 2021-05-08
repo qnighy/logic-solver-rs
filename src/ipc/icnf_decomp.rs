@@ -204,8 +204,18 @@ impl PropMap {
                     .collect::<Vec<_>>();
                 ShallowProp::Disj(children)
             }
-            Prop::Equiv(_, _) => todo!(),
-            Prop::Neg(_) => todo!(),
+            Prop::Equiv(ref lhs, ref rhs) => {
+                let lhs = self.insert_prop(vargen, lhs);
+                let rhs = self.insert_prop(vargen, rhs);
+                let lr = self.shallow_insert_prop(vargen, &ShallowProp::Impl(lhs, rhs));
+                let rl = self.shallow_insert_prop(vargen, &ShallowProp::Impl(rhs, lhs));
+                ShallowProp::Conj(vec![lr, rl])
+            }
+            Prop::Neg(ref sub) => {
+                let lhs = self.insert_prop(vargen, sub);
+                let rhs = self.shallow_insert_prop(vargen, &ShallowProp::Disj(vec![]));
+                ShallowProp::Impl(lhs, rhs)
+            }
         };
         self.shallow_insert_prop(vargen, &sp)
     }
@@ -464,6 +474,59 @@ mod tests {
                 ClId(1) => ClauseSource::ConjElim(Var(2), 1, 2),
                 ClId(2) => ClauseSource::ConjIntro(Var(3)),
                 ClId(3) => ClauseSource::ImplIntro(Var(4)),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_from_prop5() {
+        use PropShorthands::*;
+
+        let mut idgen = IdGen::new();
+        let id1 = idgen.fresh();
+        let prop = ImplS(EquivS(Atom(id1), NegS(Atom(id1))), Disj(vec![]));
+        let (icnf, decomp) = Decomposition::decompose(&mut VarGen::new(), &prop);
+        assert_eq!(
+            icnf,
+            Icnf {
+                ant: ClauseSet {
+                    vec: vec![
+                        Clause::Disj(vec![Var(1)], vec![]),
+                        Clause::Impl(Var(0), Var(1), Var(2)),
+                        Clause::Conj(vec![Var(2), Var(0)], Var(1)),
+                        Clause::Conj(vec![Var(3), Var(0)], Var(2)),
+                        Clause::Conj(vec![Var(4), Var(2)], Var(0)),
+                        Clause::Conj(vec![Var(5)], Var(3)),
+                        Clause::Conj(vec![Var(5)], Var(4)),
+                        Clause::Impl(Var(5), Var(1), Var(6)),
+                    ]
+                },
+                suc: Var(6),
+            },
+        );
+        assert_eq!(
+            decomp.prop_map().to_map(),
+            hashmap![
+                Var(0) => ShallowProp::Atom(Id(0)),
+                Var(1) => ShallowProp::Disj(vec![]),
+                Var(2) => ShallowProp::Impl(Var(0), Var(1)),
+                Var(3) => ShallowProp::Impl(Var(0), Var(2)),
+                Var(4) => ShallowProp::Impl(Var(2), Var(0)),
+                Var(5) => ShallowProp::Conj(vec![Var(3), Var(4)]),
+                Var(6) => ShallowProp::Impl(Var(5), Var(1)),
+            ],
+        );
+        assert_eq!(
+            *decomp.sources(),
+            hashmap![
+                ClId(0) => ClauseSource::DisjElim(Var(1)),
+                ClId(1) => ClauseSource::ImplIntro(Var(2)),
+                ClId(2) => ClauseSource::ImplElim(Var(2)),
+                ClId(3) => ClauseSource::ImplElim(Var(3)),
+                ClId(4) => ClauseSource::ImplElim(Var(4)),
+                ClId(5) => ClauseSource::ConjElim(Var(5), 0, 2),
+                ClId(6) => ClauseSource::ConjElim(Var(5), 1, 2),
+                ClId(7) => ClauseSource::ImplIntro(Var(6)),
             ]
         );
     }
