@@ -1,0 +1,152 @@
+---
+source: tests/latex.rs
+expression: "run(\"(A ⇔ ¬A) → ⊥\")"
+
+---
+\documentclass[a4paper,twoside=false,DIV=16]{scrartcl}
+\usepackage{bussproofs}
+\usepackage{colortbl}
+\usepackage{varwidth}
+\usepackage{pifont}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{xpatch}
+
+\newcommand{\cmark}{\textcolor{blue}{\ding{52}}}%
+\newcommand{\xmark}{\textcolor{red}{\ding{56}}}%
+
+\lstset{%
+  basicstyle={\small},%
+  identifierstyle={\small},%
+  commentstyle={\small\itshape},%
+  keywordstyle={\small\bfseries},%
+  ndkeywordstyle={\small},%
+  stringstyle={\small\ttfamily},
+  frame={tb},
+  breaklines=true,
+  columns=[l]{fullflexible},%
+  numbers=left,%
+  xrightmargin=0em,%
+  xleftmargin=3em,%
+  numberstyle={\scriptsize},%
+  stepnumber=1,
+  numbersep=1em,%
+  lineskip=-0.5ex%
+}
+
+\title{Logic solver result}
+
+\makeatletter
+% remove author, date, publishers
+\xpatchcmd{\@maketitle}
+  {%
+    {%
+      \usekomafont{author}{%
+        \lineskip .5em%
+        \begin{tabular}[t]{c}
+          \@author
+        \end{tabular}\par
+      }%
+    }%
+    \vskip 1em%
+    {\usekomafont{date}{\@date \par}}%
+    \vskip \z@ \@plus 1em
+    {\usekomafont{publishers}{\@publishers \par}}%
+  }
+  {}{}{\PatchFailed}
+\makeatother
+
+\begin{document}
+
+\maketitle
+
+
+\begin{center}
+\begin{tabular}{|c|}
+  \hline
+  \cellcolor[gray]{0.8}
+  \begin{minipage}{10cm}
+    \centering
+    Result
+  \end{minipage}
+  \\\hline
+
+  {
+    \huge
+
+
+    \cmark
+    Provable
+
+  }
+  \\\hline
+\end{tabular}
+\end{center}
+
+\section*{Input}
+
+$(A \Leftrightarrow \lnot A) \to \bot$
+
+
+
+
+\section*{Proof}
+\subsection*{Main proof}
+\begin{prooftree}
+\AxiomC{sub 1}
+\noLine
+\UnaryInfC{$\vdots$}
+\noLine
+\UnaryInfC{$\lnot A$}
+\AxiomC{$[(A \Leftrightarrow \lnot A)]_{1}$}
+\RightLabel{\scriptsize${\wedge}_{E 2}$}
+\UnaryInfC{$\lnot A \to A$}
+\AxiomC{$[(A \Leftrightarrow \lnot A)]_{1}$}
+\RightLabel{\scriptsize${\wedge}_{E 1}$}
+\UnaryInfC{$A \to \lnot A$}
+\AxiomC{$[A]_{3}$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$\lnot A$}
+\AxiomC{$[A]_{3}$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$\bot$}
+\RightLabel{\scriptsize${\to}_I (3)$}
+\UnaryInfC{$\lnot A$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$A$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$\bot$}
+\RightLabel{\scriptsize${\to}_I (1)$}
+\UnaryInfC{$(A \Leftrightarrow \lnot A) \to \bot$}
+
+\end{prooftree}
+\subsection*{Subproof 1}
+\begin{prooftree}
+\AxiomC{$[(A \Leftrightarrow \lnot A)]_{1}$}
+\RightLabel{\scriptsize${\wedge}_{E 1}$}
+\UnaryInfC{$A \to \lnot A$}
+\AxiomC{$[(A \Leftrightarrow \lnot A)]_{1}$}
+\RightLabel{\scriptsize${\wedge}_{E 2}$}
+\UnaryInfC{$\lnot A \to A$}
+\AxiomC{$[(A \Leftrightarrow \lnot A)]_{1}$}
+\RightLabel{\scriptsize${\wedge}_{E 1}$}
+\UnaryInfC{$A \to \lnot A$}
+\AxiomC{$[A]_{2}$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$\lnot A$}
+\AxiomC{$[A]_{2}$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$\bot$}
+\RightLabel{\scriptsize${\to}_I (2)$}
+\UnaryInfC{$\lnot A$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$A$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$\lnot A$}
+
+\end{prooftree}
+
+
+
+
+\end{document}

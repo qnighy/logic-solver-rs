@@ -1,0 +1,117 @@
+---
+source: tests/latex.rs
+expression: "run(\"¬¬(A ∨ ¬A)\")"
+
+---
+\documentclass[a4paper,twoside=false,DIV=16]{scrartcl}
+\usepackage{bussproofs}
+\usepackage{colortbl}
+\usepackage{varwidth}
+\usepackage{pifont}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{xpatch}
+
+\newcommand{\cmark}{\textcolor{blue}{\ding{52}}}%
+\newcommand{\xmark}{\textcolor{red}{\ding{56}}}%
+
+\lstset{%
+  basicstyle={\small},%
+  identifierstyle={\small},%
+  commentstyle={\small\itshape},%
+  keywordstyle={\small\bfseries},%
+  ndkeywordstyle={\small},%
+  stringstyle={\small\ttfamily},
+  frame={tb},
+  breaklines=true,
+  columns=[l]{fullflexible},%
+  numbers=left,%
+  xrightmargin=0em,%
+  xleftmargin=3em,%
+  numberstyle={\scriptsize},%
+  stepnumber=1,
+  numbersep=1em,%
+  lineskip=-0.5ex%
+}
+
+\title{Logic solver result}
+
+\makeatletter
+% remove author, date, publishers
+\xpatchcmd{\@maketitle}
+  {%
+    {%
+      \usekomafont{author}{%
+        \lineskip .5em%
+        \begin{tabular}[t]{c}
+          \@author
+        \end{tabular}\par
+      }%
+    }%
+    \vskip 1em%
+    {\usekomafont{date}{\@date \par}}%
+    \vskip \z@ \@plus 1em
+    {\usekomafont{publishers}{\@publishers \par}}%
+  }
+  {}{}{\PatchFailed}
+\makeatother
+
+\begin{document}
+
+\maketitle
+
+
+\begin{center}
+\begin{tabular}{|c|}
+  \hline
+  \cellcolor[gray]{0.8}
+  \begin{minipage}{10cm}
+    \centering
+    Result
+  \end{minipage}
+  \\\hline
+
+  {
+    \huge
+
+
+    \cmark
+    Provable
+
+  }
+  \\\hline
+\end{tabular}
+\end{center}
+
+\section*{Input}
+
+$\lnot \lnot (A \vee \lnot A)$
+
+
+
+
+\section*{Proof}
+
+\begin{prooftree}
+\AxiomC{$[\lnot (A \vee \lnot A)]_{1}$}
+\AxiomC{$[\lnot (A \vee \lnot A)]_{1}$}
+\AxiomC{$[A]_{2}$}
+\RightLabel{\scriptsize${\vee}_{I 1}$}
+\UnaryInfC{$A \vee \lnot A$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$\bot$}
+\RightLabel{\scriptsize${\to}_I (2)$}
+\UnaryInfC{$\lnot A$}
+\RightLabel{\scriptsize${\vee}_{I 2}$}
+\UnaryInfC{$A \vee \lnot A$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$\bot$}
+\RightLabel{\scriptsize${\to}_I (1)$}
+\UnaryInfC{$\lnot \lnot (A \vee \lnot A)$}
+
+\end{prooftree}
+
+
+
+
+\end{document}

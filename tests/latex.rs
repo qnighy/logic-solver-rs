@@ -38,6 +38,16 @@ fn test_latex7() {
     ));
 }
 
+#[test]
+fn test_latex8() {
+    assert_snapshot!(run("¬¬(A ∨ ¬A)"));
+}
+
+#[test]
+fn test_latex9() {
+    assert_snapshot!(run("(A ⇔ ¬A) → ⊥"));
+}
+
 fn run(s: &str) -> String {
     let output = Command::new("cargo")
         .args(&["run", "--", "-e", s, "--latex"])
