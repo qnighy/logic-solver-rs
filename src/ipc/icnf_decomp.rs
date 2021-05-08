@@ -33,7 +33,7 @@ impl Decomposition {
             let (pos, neg) = pol_map.polarity(v);
             match *sp {
                 ShallowProp::Atom(..) => {}
-                ShallowProp::Impl(lhs, rhs) => {
+                ShallowProp::Impl(lhs, rhs, _) => {
                     if pos {
                         let cl = ant.push(Clause::Impl(lhs, rhs, v));
                         sources.insert(cl, ClauseSource::ImplIntro(v));
@@ -43,7 +43,7 @@ impl Decomposition {
                         sources.insert(cl, ClauseSource::ImplElim(v));
                     }
                 }
-                ShallowProp::Conj(ref children) => {
+                ShallowProp::Conj(ref children, _) => {
                     if pos {
                         let cl = ant.push(Clause::Conj(children.clone(), v));
                         sources.insert(cl, ClauseSource::ConjIntro(v));
@@ -173,9 +173,25 @@ impl PropMap {
     pub fn get_prop(&self, v: Var) -> Prop {
         match *self.get(v).unwrap() {
             ShallowProp::Atom(id) => Prop::Atom(id),
-            ShallowProp::Impl(lhs, rhs) => Prop::ImplS(self.get_prop(lhs), self.get_prop(rhs)),
-            ShallowProp::Conj(ref children) => {
+            ShallowProp::Impl(lhs, rhs, ImplType::Normal) => {
+                Prop::ImplS(self.get_prop(lhs), self.get_prop(rhs))
+            }
+            ShallowProp::Impl(lhs, rhs, ImplType::Neg) => {
+                debug_assert_eq!(self.get_prop(rhs), Prop::Disj(vec![]));
+                Prop::NegS(self.get_prop(lhs))
+            }
+            ShallowProp::Conj(ref children, ConjType::Normal) => {
                 Prop::Conj(children.iter().map(|&child| self.get_prop(child)).collect())
+            }
+            ShallowProp::Conj(ref children, ConjType::Equiv) => {
+                debug_assert_eq!(children.len(), 2);
+                let (lhs, rhs) = self.get(children[0]).unwrap().as_impl().unwrap();
+                if cfg!(debug_assert) {
+                    let (lhs_rev, rhs_rev) = self.get(children[1]).unwrap().as_impl().unwrap();
+                    assert_eq!(lhs, rhs_rev);
+                    assert_eq!(rhs, lhs_rev);
+                }
+                Prop::EquivS(self.get_prop(lhs), self.get_prop(rhs))
             }
             ShallowProp::Disj(ref children) => {
                 Prop::Disj(children.iter().map(|&child| self.get_prop(child)).collect())
@@ -188,14 +204,14 @@ impl PropMap {
             Prop::Impl(ref lhs, ref rhs) => {
                 let lhs = self.insert_prop(vargen, lhs);
                 let rhs = self.insert_prop(vargen, rhs);
-                ShallowProp::Impl(lhs, rhs)
+                ShallowProp::Impl(lhs, rhs, ImplType::Normal)
             }
             Prop::Conj(ref children) => {
                 let children = children
                     .iter()
                     .map(|child| self.insert_prop(vargen, child))
                     .collect::<Vec<_>>();
-                ShallowProp::Conj(children)
+                ShallowProp::Conj(children, ConjType::Normal)
             }
             Prop::Disj(ref children) => {
                 let children = children
@@ -207,14 +223,16 @@ impl PropMap {
             Prop::Equiv(ref lhs, ref rhs) => {
                 let lhs = self.insert_prop(vargen, lhs);
                 let rhs = self.insert_prop(vargen, rhs);
-                let lr = self.shallow_insert_prop(vargen, &ShallowProp::Impl(lhs, rhs));
-                let rl = self.shallow_insert_prop(vargen, &ShallowProp::Impl(rhs, lhs));
-                ShallowProp::Conj(vec![lr, rl])
+                let lr = self
+                    .shallow_insert_prop(vargen, &ShallowProp::Impl(lhs, rhs, ImplType::Normal));
+                let rl = self
+                    .shallow_insert_prop(vargen, &ShallowProp::Impl(rhs, lhs, ImplType::Normal));
+                ShallowProp::Conj(vec![lr, rl], ConjType::Equiv)
             }
             Prop::Neg(ref sub) => {
                 let lhs = self.insert_prop(vargen, sub);
                 let rhs = self.shallow_insert_prop(vargen, &ShallowProp::Disj(vec![]));
-                ShallowProp::Impl(lhs, rhs)
+                ShallowProp::Impl(lhs, rhs, ImplType::Neg)
             }
         };
         self.shallow_insert_prop(vargen, &sp)
@@ -261,11 +279,11 @@ impl PolarityMap {
         polset.insert(v);
         match *decomp.get(v).unwrap() {
             ShallowProp::Atom(..) => {}
-            ShallowProp::Impl(lhs, rhs) => {
+            ShallowProp::Impl(lhs, rhs, _) => {
                 self.mark_polarity(decomp, lhs, !positive);
                 self.mark_polarity(decomp, rhs, positive);
             }
-            ShallowProp::Conj(ref children) => {
+            ShallowProp::Conj(ref children, _) => {
                 for &child in children {
                     self.mark_polarity(decomp, child, positive);
                 }
@@ -282,9 +300,21 @@ impl PolarityMap {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ShallowProp {
     Atom(Id),
-    Impl(Var, Var),
-    Conj(Vec<Var>),
+    Impl(Var, Var, ImplType),
+    Conj(Vec<Var>, ConjType),
     Disj(Vec<Var>),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ImplType {
+    Normal,
+    Neg,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ConjType {
+    Normal,
+    Equiv,
 }
 
 impl ShallowProp {
@@ -297,7 +327,7 @@ impl ShallowProp {
     }
 
     pub fn as_impl(&self) -> Option<(Var, Var)> {
-        if let ShallowProp::Impl(lhs, rhs) = *self {
+        if let ShallowProp::Impl(lhs, rhs, _) = *self {
             Some((lhs, rhs))
         } else {
             None
@@ -305,7 +335,7 @@ impl ShallowProp {
     }
 
     pub fn as_conj(&self) -> Option<&[Var]> {
-        if let ShallowProp::Conj(ref children) = *self {
+        if let ShallowProp::Conj(ref children, _) = *self {
             Some(children)
         } else {
             None
@@ -373,7 +403,7 @@ mod tests {
             decomp.prop_map().to_map(),
             hashmap![
                 Var(0) => ShallowProp::Atom(Id(0)),
-                Var(1) => ShallowProp::Impl(Var(0), Var(0)),
+                Var(1) => ShallowProp::Impl(Var(0), Var(0), ImplType::Normal),
             ],
         );
         assert_eq!(
@@ -417,7 +447,7 @@ mod tests {
                 Var(1) => ShallowProp::Atom(Id(1)),
                 Var(2) => ShallowProp::Disj(vec![Var(0), Var(1)]),
                 Var(3) => ShallowProp::Disj(vec![Var(1), Var(0)]),
-                Var(4) => ShallowProp::Impl(Var(2), Var(3)),
+                Var(4) => ShallowProp::Impl(Var(2), Var(3), ImplType::Normal),
             ],
         );
         assert_eq!(
@@ -462,9 +492,9 @@ mod tests {
             hashmap![
                 Var(0) => ShallowProp::Atom(Id(0)),
                 Var(1) => ShallowProp::Atom(Id(1)),
-                Var(2) => ShallowProp::Conj(vec![Var(0), Var(1)]),
-                Var(3) => ShallowProp::Conj(vec![Var(1), Var(0)]),
-                Var(4) => ShallowProp::Impl(Var(2), Var(3)),
+                Var(2) => ShallowProp::Conj(vec![Var(0), Var(1)], ConjType::Normal),
+                Var(3) => ShallowProp::Conj(vec![Var(1), Var(0)], ConjType::Normal),
+                Var(4) => ShallowProp::Impl(Var(2), Var(3), ImplType::Normal),
             ],
         );
         assert_eq!(
@@ -509,11 +539,11 @@ mod tests {
             hashmap![
                 Var(0) => ShallowProp::Atom(Id(0)),
                 Var(1) => ShallowProp::Disj(vec![]),
-                Var(2) => ShallowProp::Impl(Var(0), Var(1)),
-                Var(3) => ShallowProp::Impl(Var(0), Var(2)),
-                Var(4) => ShallowProp::Impl(Var(2), Var(0)),
-                Var(5) => ShallowProp::Conj(vec![Var(3), Var(4)]),
-                Var(6) => ShallowProp::Impl(Var(5), Var(1)),
+                Var(2) => ShallowProp::Impl(Var(0), Var(1), ImplType::Neg),
+                Var(3) => ShallowProp::Impl(Var(0), Var(2), ImplType::Normal),
+                Var(4) => ShallowProp::Impl(Var(2), Var(0), ImplType::Normal),
+                Var(5) => ShallowProp::Conj(vec![Var(3), Var(4)], ConjType::Equiv),
+                Var(6) => ShallowProp::Impl(Var(5), Var(1), ImplType::Normal),
             ],
         );
         assert_eq!(
