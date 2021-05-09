@@ -2,11 +2,12 @@ use std::io::{self, Read, Write};
 use structopt::StructOpt;
 use thiserror::Error;
 
-use crate::ipc::{solve, try_refute};
+use crate::ipc::{solve_res, try_refute_res};
 use crate::latex::{parse_error_latex, success_latex};
-use crate::naming::{lower_prop, promote_kripke, promote_nj};
+use crate::naming::lower_prop;
 use crate::parsing::{parse_prop, ParseError};
 use crate::prop::{Env, IdGen};
+use crate::result::SolverResultPair;
 
 pub mod debruijn;
 pub mod ipc;
@@ -16,6 +17,7 @@ pub mod naming;
 pub mod nj;
 pub mod parsing;
 pub mod prop;
+pub mod result;
 pub mod rollback;
 #[cfg(test)]
 mod tests;
@@ -60,43 +62,42 @@ fn main2() -> Result<(), LogicSolverError> {
         s
     };
 
-    if opt.latex {
-        let mut idgen = IdGen::new();
-        let mut env = Env::new();
+    let mut idgen = IdGen::new();
+    let mut env = Env::new();
 
-        let ast = match parse_prop(&expr) {
-            Ok(x) => x,
-            Err(e) => {
-                let latex_src = parse_error_latex(&expr, e);
-                let stdout = io::stdout();
-                let mut stdout = stdout.lock();
-                stdout.write_all(latex_src.as_bytes())?;
-                return Ok(());
-            }
-        };
-        let prop = lower_prop(&mut idgen, &mut env, &ast);
-        let pf = solve(&prop).map(|pf| promote_nj(&pf, &env));
-        let rft = if pf.is_some() {
-            None
-        } else {
-            try_refute(&prop).map(|rft| promote_kripke(&rft, &env))
-        };
-        let latex_src = success_latex(&ast, pf.as_ref(), rft.as_ref());
+    let ast = match parse_prop(&expr) {
+        Ok(x) => x,
+        Err(e) if opt.latex => {
+            let latex_src = parse_error_latex(&expr, e);
+            let stdout = io::stdout();
+            let mut stdout = stdout.lock();
+            stdout.write_all(latex_src.as_bytes())?;
+            return Ok(());
+        }
+        Err(e) => {
+            return Err(e.into());
+        }
+    };
+    let prop = lower_prop(&mut idgen, &mut env, &ast);
+    let mut res = SolverResultPair::default();
+    res.update_int(solve_res(&prop));
+    if !res.int.is_provable() && opt.latex {
+        res.update_int(try_refute_res(&prop));
+    }
+    if opt.latex {
+        let latex_src = success_latex(&ast, &res, &env);
         let stdout = io::stdout();
         let mut stdout = stdout.lock();
         stdout.write_all(latex_src.as_bytes())?;
         return Ok(());
     }
 
-    let mut idgen = IdGen::new();
-    let mut env = Env::new();
-    let ast = parse_prop(&expr)?;
-    let prop = lower_prop(&mut idgen, &mut env, &ast);
-    let provable = solve(&prop).is_some();
-    if provable {
+    if res.int.is_provable() {
         println!("Provable");
-    } else {
+    } else if res.int.is_not_provable() {
         println!("Not provable");
+    } else {
+        println!("Unknown");
     }
 
     Ok(())

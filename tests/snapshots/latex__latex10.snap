@@ -79,11 +79,8 @@ expression: "run(\"A ∨ ¬ A\")"
 
   {
     \huge
-
-
     \xmark
     Not provable
-
   }
   \\\hline
 \end{tabular}
@@ -103,7 +100,6 @@ Refutation in Kripke model:
 \draw (w0) edge[->,acc] (w1);
 \end{tikzpicture}
 
-
 \begin{tabular}{r|cc}
 & $W_0$& $W_1$
 \\\hline\hline
@@ -115,8 +111,5 @@ A & 0 & 1
 \\
 A \vee \lnot A & 0 & 1
 \end{tabular}
-
-
-
 
 \end{document}

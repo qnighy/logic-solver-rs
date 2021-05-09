@@ -3,6 +3,15 @@ use super::icnf_decomp::Decomposition;
 use super::icnf_refutation::try_refute_icnf;
 use crate::kripke::KripkeRefutation;
 use crate::prop::Prop;
+use crate::result::SolverResult;
+
+pub fn try_refute_res<P>(prop: &Prop) -> SolverResult<P, KripkeRefutation> {
+    if let Some(rft) = try_refute(prop) {
+        SolverResult::NotProvable(Some(rft))
+    } else {
+        SolverResult::Unknown
+    }
+}
 
 pub fn try_refute(prop: &Prop) -> Option<KripkeRefutation> {
     let mut vargen = VarGen::new();

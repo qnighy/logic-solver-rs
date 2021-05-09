@@ -79,11 +79,8 @@ expression: "run(\"(A ⇔ ¬A) → ⊥\")"
 
   {
     \huge
-
-
     \cmark
     Provable
-
   }
   \\\hline
 \end{tabular}
@@ -93,10 +90,8 @@ expression: "run(\"(A ⇔ ¬A) → ⊥\")"
 
 $(A \Leftrightarrow \lnot A) \to \bot$
 
-
-
-
 \section*{Proof}
+
 \subsection*{Main proof}
 \begin{prooftree}
 \AxiomC{sub 1}
@@ -124,8 +119,8 @@ $(A \Leftrightarrow \lnot A) \to \bot$
 \BinaryInfC{$\bot$}
 \RightLabel{\scriptsize${\to}_I (1)$}
 \UnaryInfC{$(A \Leftrightarrow \lnot A) \to \bot$}
-
 \end{prooftree}
+
 \subsection*{Subproof 1}
 \begin{prooftree}
 \AxiomC{$[(A \Leftrightarrow \lnot A)]_{1}$}
@@ -149,10 +144,6 @@ $(A \Leftrightarrow \lnot A) \to \bot$
 \BinaryInfC{$A$}
 \RightLabel{\scriptsize${\to}_E$}
 \BinaryInfC{$\lnot A$}
-
 \end{prooftree}
-
-
-
 
 \end{document}

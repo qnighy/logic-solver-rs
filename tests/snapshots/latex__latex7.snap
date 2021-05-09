@@ -79,11 +79,8 @@ expression: "run(\"(A → A → B) → (B → B → C) → (C → C → D) → (
 
   {
     \huge
-
-
     \cmark
     Provable
-
   }
   \\\hline
 \end{tabular}
@@ -93,10 +90,8 @@ expression: "run(\"(A → A → B) → (B → B → C) → (C → C → D) → (
 
 $(A \to A \to B) \to (B \to B \to C) \to (C \to C \to D) \to (D \to D \to E) \to (E \to E \to F) \to A \to F$
 
-
-
-
 \section*{Proof}
+
 \subsection*{Main proof}
 \begin{prooftree}
 \AxiomC{$[E \to E \to F]_{5}$}
@@ -126,8 +121,8 @@ $(A \to A \to B) \to (B \to B \to C) \to (C \to C \to D) \to (D \to D \to E) \to
 \UnaryInfC{$(B \to B \to C) \to (C \to C \to D) \to (D \to D \to E) \to (E \to E \to F) \to A \to F$}
 \RightLabel{\scriptsize${\to}_I (1)$}
 \UnaryInfC{$(A \to A \to B) \to (B \to B \to C) \to (C \to C \to D) \to (D \to D \to E) \to (E \to E \to F) \to A \to F$}
-
 \end{prooftree}
+
 \subsection*{Subproof 1}
 \begin{prooftree}
 \AxiomC{$[D \to D \to E]_{4}$}
@@ -165,8 +160,8 @@ $(A \to A \to B) \to (B \to B \to C) \to (C \to C \to D) \to (D \to D \to E) \to
 \BinaryInfC{$D$}
 \RightLabel{\scriptsize${\to}_E$}
 \BinaryInfC{$E$}
-
 \end{prooftree}
+
 \subsection*{Subproof 2}
 \begin{prooftree}
 \AxiomC{$[B \to B \to C]_{2}$}
@@ -188,8 +183,8 @@ $(A \to A \to B) \to (B \to B \to C) \to (C \to C \to D) \to (D \to D \to E) \to
 \BinaryInfC{$B$}
 \RightLabel{\scriptsize${\to}_E$}
 \BinaryInfC{$C$}
-
 \end{prooftree}
+
 \subsection*{Subproof 3}
 \begin{prooftree}
 \AxiomC{$[B \to B \to C]_{2}$}
@@ -211,8 +206,8 @@ $(A \to A \to B) \to (B \to B \to C) \to (C \to C \to D) \to (D \to D \to E) \to
 \BinaryInfC{$B$}
 \RightLabel{\scriptsize${\to}_E$}
 \BinaryInfC{$C$}
-
 \end{prooftree}
+
 \subsection*{Subproof 4}
 \begin{prooftree}
 \AxiomC{$[B \to B \to C]_{2}$}
@@ -234,8 +229,8 @@ $(A \to A \to B) \to (B \to B \to C) \to (C \to C \to D) \to (D \to D \to E) \to
 \BinaryInfC{$B$}
 \RightLabel{\scriptsize${\to}_E$}
 \BinaryInfC{$C$}
-
 \end{prooftree}
+
 \subsection*{Subproof 5}
 \begin{prooftree}
 \AxiomC{$[B \to B \to C]_{2}$}
@@ -257,8 +252,8 @@ $(A \to A \to B) \to (B \to B \to C) \to (C \to C \to D) \to (D \to D \to E) \to
 \BinaryInfC{$B$}
 \RightLabel{\scriptsize${\to}_E$}
 \BinaryInfC{$C$}
-
 \end{prooftree}
+
 \subsection*{Subproof 6}
 \begin{prooftree}
 \AxiomC{$[D \to D \to E]_{4}$}
@@ -296,8 +291,8 @@ $(A \to A \to B) \to (B \to B \to C) \to (C \to C \to D) \to (D \to D \to E) \to
 \BinaryInfC{$D$}
 \RightLabel{\scriptsize${\to}_E$}
 \BinaryInfC{$E$}
-
 \end{prooftree}
+
 \subsection*{Subproof 7}
 \begin{prooftree}
 \AxiomC{$[B \to B \to C]_{2}$}
@@ -319,8 +314,8 @@ $(A \to A \to B) \to (B \to B \to C) \to (C \to C \to D) \to (D \to D \to E) \to
 \BinaryInfC{$B$}
 \RightLabel{\scriptsize${\to}_E$}
 \BinaryInfC{$C$}
-
 \end{prooftree}
+
 \subsection*{Subproof 8}
 \begin{prooftree}
 \AxiomC{$[B \to B \to C]_{2}$}
@@ -342,8 +337,8 @@ $(A \to A \to B) \to (B \to B \to C) \to (C \to C \to D) \to (D \to D \to E) \to
 \BinaryInfC{$B$}
 \RightLabel{\scriptsize${\to}_E$}
 \BinaryInfC{$C$}
-
 \end{prooftree}
+
 \subsection*{Subproof 9}
 \begin{prooftree}
 \AxiomC{$[B \to B \to C]_{2}$}
@@ -365,8 +360,8 @@ $(A \to A \to B) \to (B \to B \to C) \to (C \to C \to D) \to (D \to D \to E) \to
 \BinaryInfC{$B$}
 \RightLabel{\scriptsize${\to}_E$}
 \BinaryInfC{$C$}
-
 \end{prooftree}
+
 \subsection*{Subproof 10}
 \begin{prooftree}
 \AxiomC{$[B \to B \to C]_{2}$}
@@ -388,10 +383,6 @@ $(A \to A \to B) \to (B \to B \to C) \to (C \to C \to D) \to (D \to D \to E) \to
 \BinaryInfC{$B$}
 \RightLabel{\scriptsize${\to}_E$}
 \BinaryInfC{$C$}
-
 \end{prooftree}
-
-
-
 
 \end{document}

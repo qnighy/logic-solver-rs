@@ -79,11 +79,8 @@ expression: "run(\"A → B → A\")"
 
   {
     \huge
-
-
     \cmark
     Provable
-
   }
   \\\hline
 \end{tabular}
@@ -93,9 +90,6 @@ expression: "run(\"A → B → A\")"
 
 $A \to B \to A$
 
-
-
-
 \section*{Proof}
 
 \begin{prooftree}
@@ -104,10 +98,6 @@ $A \to B \to A$
 \UnaryInfC{$B \to A$}
 \RightLabel{\scriptsize${\to}_I (1)$}
 \UnaryInfC{$A \to B \to A$}
-
 \end{prooftree}
-
-
-
 
 \end{document}

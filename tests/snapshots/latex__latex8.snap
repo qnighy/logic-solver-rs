@@ -79,11 +79,8 @@ expression: "run(\"¬¬(A ∨ ¬A)\")"
 
   {
     \huge
-
-
     \cmark
     Provable
-
   }
   \\\hline
 \end{tabular}
@@ -92,9 +89,6 @@ expression: "run(\"¬¬(A ∨ ¬A)\")"
 \section*{Input}
 
 $\lnot \lnot (A \vee \lnot A)$
-
-
-
 
 \section*{Proof}
 
@@ -114,10 +108,6 @@ $\lnot \lnot (A \vee \lnot A)$
 \BinaryInfC{$\bot$}
 \RightLabel{\scriptsize${\to}_I (1)$}
 \UnaryInfC{$\lnot \lnot (A \vee \lnot A)$}
-
 \end{prooftree}
-
-
-
 
 \end{document}

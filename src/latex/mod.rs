@@ -4,9 +4,10 @@ use self::kripke::{kripke_assignment_latex, kripke_frame_latex};
 use self::nj::nj_latex;
 use self::prop::prop_latex;
 use self::split::split_proof;
-use crate::kripke::VisibleKripkeRefutation;
+use crate::naming::{promote_kripke, promote_nj};
 use crate::parsing::{ParseError, Prop as PropAst};
-use crate::visible_proof::VisibleProof;
+use crate::prop::Env;
+use crate::result::{SolverResult, SolverResultPair, Void};
 
 mod kripke;
 mod nj;
@@ -19,11 +20,15 @@ struct SuccessTemplate {
     #[allow(dead_code)]
     prop: String,
     #[allow(dead_code)]
-    provable: bool,
+    cl_result: SolverResult<Void, Void>,
     #[allow(dead_code)]
-    proofs: Vec<(String, String)>,
-    #[allow(dead_code)]
-    refutation: Option<Refutation>,
+    int_result: SolverResult<Vec<ProofFragment>, Refutation>,
+}
+
+#[derive(Debug, Clone)]
+struct ProofFragment {
+    name: String,
+    source: String,
 }
 
 #[derive(Debug, Clone)]
@@ -32,36 +37,41 @@ struct Refutation {
     assignment: String,
 }
 
-pub fn success_latex(
-    prop: &PropAst,
-    pf: Option<&VisibleProof>,
-    rft: Option<&VisibleKripkeRefutation>,
-) -> String {
-    let provable = pf.is_some();
-    let proofs = if let Some(pf) = pf {
-        split_proof(pf)
-            .into_iter()
-            .enumerate()
-            .map(|(i, pf)| {
-                let name = if i == 0 {
-                    "Main proof".to_owned()
-                } else {
-                    format!("Subproof {}", i)
-                };
-                (name, nj_latex(&pf))
-            })
-            .collect::<Vec<_>>()
-    } else {
-        Vec::new()
+pub fn success_latex(prop: &PropAst, res: &SolverResultPair, env: &Env) -> String {
+    let cl_result = res.cl.clone();
+    let int_result = match &res.int {
+        SolverResult::NotProvable(rft) => SolverResult::NotProvable(rft.as_ref().map(|rft| {
+            let rft = promote_kripke(rft, env);
+            Refutation {
+                frame: kripke_frame_latex(&rft),
+                assignment: kripke_assignment_latex(&rft),
+            }
+        })),
+        SolverResult::Unknown => SolverResult::Unknown,
+        SolverResult::Provable(pf) => SolverResult::Provable(pf.as_ref().map(|pf| {
+            let pf = promote_nj(pf, env);
+
+            split_proof(&pf)
+                .into_iter()
+                .enumerate()
+                .map(|(i, pf)| {
+                    let name = if i == 0 {
+                        "Main proof".to_owned()
+                    } else {
+                        format!("Subproof {}", i)
+                    };
+                    ProofFragment {
+                        name,
+                        source: nj_latex(&pf),
+                    }
+                })
+                .collect::<Vec<_>>()
+        })),
     };
     SuccessTemplate {
         prop: prop_latex(prop),
-        provable,
-        proofs,
-        refutation: rft.map(|rft| Refutation {
-            frame: kripke_frame_latex(rft),
-            assignment: kripke_assignment_latex(rft),
-        }),
+        cl_result,
+        int_result,
     }
     .render()
     .unwrap()

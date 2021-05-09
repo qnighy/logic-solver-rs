@@ -4,6 +4,15 @@ use crate::ipc::icnf::VarGen;
 use crate::ipc::icnf_decomp::Decomposition;
 use crate::ipc::icnf_solver::solve_icnf;
 use crate::nj::Proof;
+use crate::result::SolverResult;
+
+pub fn solve_res<R>(prop: &Prop) -> SolverResult<Proof, R> {
+    if let Some(pf) = solve(prop) {
+        SolverResult::Provable(Some(pf))
+    } else {
+        SolverResult::NotProvable(None)
+    }
+}
 
 pub fn solve(prop: &Prop) -> Option<Proof> {
     let mut vargen = VarGen::new();

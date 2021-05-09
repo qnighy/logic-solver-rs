@@ -79,11 +79,8 @@ expression: "run(\"(A → B → A) ∧ (A ∨ B → B ∨ A)\")"
 
   {
     \huge
-
-
     \cmark
     Provable
-
   }
   \\\hline
 \end{tabular}
@@ -92,9 +89,6 @@ expression: "run(\"(A → B → A) ∧ (A ∨ B → B ∨ A)\")"
 \section*{Input}
 
 $(A \to B \to A) \wedge (A \vee B \to B \vee A)$
-
-
-
 
 \section*{Proof}
 
@@ -117,10 +111,6 @@ $(A \to B \to A) \wedge (A \vee B \to B \vee A)$
 \UnaryInfC{$A \vee B \to B \vee A$}
 \RightLabel{\scriptsize${\wedge}_I$}
 \BinaryInfC{$(A \to B \to A) \wedge (A \vee B \to B \vee A)$}
-
 \end{prooftree}
-
-
-
 
 \end{document}

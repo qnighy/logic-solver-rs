@@ -79,11 +79,8 @@ expression: "run(\"(A → B → A) ∧ (A ∨ B → B)\")"
 
   {
     \huge
-
-
     \xmark
     Not provable
-
   }
   \\\hline
 \end{tabular}
@@ -100,7 +97,6 @@ Refutation in Kripke model:
 \begin{tikzpicture}[layered layout, level distance=2cm, sibling distance=2cm, nodes={{circle, draw}}, acc/.style={{decorate,decoration=snake}}]
 \node (w0) {$W_0$};
 \end{tikzpicture}
-
 
 \begin{tabular}{r|c}
 & $W_0$
@@ -119,8 +115,5 @@ A \vee B \to B & 0
 \\
 (A \to B \to A) \wedge (A \vee B \to B) & 0
 \end{tabular}
-
-
-
 
 \end{document}

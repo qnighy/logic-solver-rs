@@ -12,14 +12,15 @@
 
   {
     \huge
-<% if provable %>
-
+<%- if int_result.is_provable() %>
     \cmark
     Provable
-<% else %>
+<%- else if int_result.is_not_provable() %>
     \xmark
     Not provable
-<% endif %>
+<%- else %>
+    Unknown
+<%- endif %>
   }
   \\\hline
 \end{tabular}
@@ -29,30 +30,35 @@
 
 $<= prop %>$
 
-<% if provable %>
-
-
+<% match int_result %>
+<%- when SolverResult::Provable with (pf) %>
+<%- match pf %>
+<%- when Some with (pf) -%>
 \section*{Proof}
-<% for (name, proof) in proofs -%>
-<%- if proofs.len() > 1 -%>
-\subsection*{<= name %>}
-<% endif -%>
+<% for fragment in pf %>
+<%- if pf.len() > 1 %>
+\subsection*{<= fragment.name %>}
+<%- endif %>
 \begin{prooftree}
-<= proof %>
+<= fragment.source -%>
 \end{prooftree}
-<% endfor -%>
-<%- else -%>
-<%- match refutation -%>
+<% endfor %>
+
+<%- when None %>
+<%- endmatch %>
+
+<%- when SolverResult::NotProvable with (rft) %>
+<%- match rft %>
 <%- when Some with (rft) -%>
 \section*{Refutation}
 
 Refutation in Kripke model:
 
 <= rft.frame %>
-
 <= rft.assignment %>
 <%- when None -%>
 <%- endmatch -%>
-<%- endif %>
+<%- when SolverResult::Unknown -%>
+<%- endmatch -%>
 
-<% endblock %>
+<%- endblock -%>

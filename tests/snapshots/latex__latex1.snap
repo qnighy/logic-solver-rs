@@ -79,11 +79,8 @@ expression: "run(\"A\")"
 
   {
     \huge
-
-
     \xmark
     Not provable
-
   }
   \\\hline
 \end{tabular}
@@ -101,14 +98,10 @@ Refutation in Kripke model:
 \node (w0) {$W_0$};
 \end{tikzpicture}
 
-
 \begin{tabular}{r|c}
 & $W_0$
 \\\hline\hline
 A & 0
 \end{tabular}
-
-
-
 
 \end{document}
