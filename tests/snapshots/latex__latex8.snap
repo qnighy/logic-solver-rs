@@ -11,6 +11,12 @@ expression: "run(\"¬¬(A ∨ ¬A)\")"
 \usepackage{xcolor}
 \usepackage{listings}
 \usepackage{xpatch}
+\usepackage{tikz}
+
+\usetikzlibrary{graphs}
+\usetikzlibrary{graphdrawing}
+\usetikzlibrary{decorations.pathmorphing}
+\usegdlibrary{layered}
 
 \newcommand{\cmark}{\textcolor{blue}{\ding{52}}}%
 \newcommand{\xmark}{\textcolor{red}{\ding{56}}}%

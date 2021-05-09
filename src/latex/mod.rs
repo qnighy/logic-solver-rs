@@ -1,11 +1,14 @@
 use askama::Template;
 
+use self::kripke::kripke_frame_latex;
 use self::nj::nj_latex;
 use self::prop::prop_latex;
 use self::split::split_proof;
+use crate::kripke::VisibleKripkeRefutation;
 use crate::parsing::{ParseError, Prop as PropAst};
 use crate::visible_proof::VisibleProof;
 
+mod kripke;
 mod nj;
 mod prop;
 mod split;
@@ -19,9 +22,20 @@ struct SuccessTemplate {
     provable: bool,
     #[allow(dead_code)]
     proofs: Vec<(String, String)>,
+    #[allow(dead_code)]
+    refutation: Option<Refutation>,
 }
 
-pub fn success_latex(prop: &PropAst, pf: Option<&VisibleProof>) -> String {
+#[derive(Debug, Clone)]
+struct Refutation {
+    frame: String,
+}
+
+pub fn success_latex(
+    prop: &PropAst,
+    pf: Option<&VisibleProof>,
+    rft: Option<&VisibleKripkeRefutation>,
+) -> String {
     let provable = pf.is_some();
     let proofs = if let Some(pf) = pf {
         split_proof(pf)
@@ -43,6 +57,9 @@ pub fn success_latex(prop: &PropAst, pf: Option<&VisibleProof>) -> String {
         prop: prop_latex(prop),
         provable,
         proofs,
+        refutation: rft.map(|rft| Refutation {
+            frame: kripke_frame_latex(rft),
+        }),
     }
     .render()
     .unwrap()

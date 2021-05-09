@@ -2,9 +2,9 @@ use std::io::{self, Read, Write};
 use structopt::StructOpt;
 use thiserror::Error;
 
-use crate::ipc::solve;
+use crate::ipc::{solve, try_refute};
 use crate::latex::{parse_error_latex, success_latex};
-use crate::naming::{lower_prop, promote_nj};
+use crate::naming::{lower_prop, promote_kripke, promote_nj};
 use crate::parsing::{parse_prop, ParseError};
 use crate::prop::{Env, IdGen};
 
@@ -76,7 +76,12 @@ fn main2() -> Result<(), LogicSolverError> {
         };
         let prop = lower_prop(&mut idgen, &mut env, &ast);
         let pf = solve(&prop).map(|pf| promote_nj(&pf, &env));
-        let latex_src = success_latex(&ast, pf.as_ref());
+        let rft = if pf.is_some() {
+            None
+        } else {
+            try_refute(&prop).map(|rft| promote_kripke(&rft, &env))
+        };
+        let latex_src = success_latex(&ast, pf.as_ref(), rft.as_ref());
         let stdout = io::stdout();
         let mut stdout = stdout.lock();
         stdout.write_all(latex_src.as_bytes())?;

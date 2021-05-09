@@ -11,6 +11,12 @@ expression: "run(\"A\")"
 \usepackage{xcolor}
 \usepackage{listings}
 \usepackage{xpatch}
+\usepackage{tikz}
+
+\usetikzlibrary{graphs}
+\usetikzlibrary{graphdrawing}
+\usetikzlibrary{decorations.pathmorphing}
+\usegdlibrary{layered}
 
 \newcommand{\cmark}{\textcolor{blue}{\ding{52}}}%
 \newcommand{\xmark}{\textcolor{red}{\ding{56}}}%
@@ -87,6 +93,13 @@ expression: "run(\"A\")"
 
 $A$
 
+\section*{Refutation}
+
+Refutation in Kripke model:
+
+\begin{tikzpicture}[layered layout, level distance=2cm, sibling distance=2cm, nodes={{circle, draw}}, acc/.style={{decorate,decoration=snake,arrow head=5mm}}]
+\node (w0) {$W_0$};
+\end{tikzpicture}
 
 
 

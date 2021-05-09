@@ -5,4 +5,5 @@ pub mod icnf_solver;
 pub mod refutation;
 pub mod solver;
 
+pub use refutation::try_refute;
 pub use solver::solve;

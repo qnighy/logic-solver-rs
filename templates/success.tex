@@ -41,6 +41,16 @@ $<= prop %>$
 <= proof %>
 \end{prooftree}
 <% endfor -%>
+<%- else -%>
+<%- match refutation -%>
+<%- when Some with (rft) -%>
+\section*{Refutation}
+
+Refutation in Kripke model:
+
+<= rft.frame %>
+<%- when None -%>
+<%- endmatch -%>
 <%- endif %>
 
 <% endblock %>
