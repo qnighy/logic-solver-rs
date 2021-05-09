@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use varisat::{ExtendFormula, Solver, Var as SatVar};
 
-use crate::ipc::icnf::{Clause, Icnf, Var, VarGen};
+use crate::ipc::icnf::{Clause, Icnf, Refutation, Var, VarGen};
 
 const MAX_NUM_WORLDS: usize = 5;
 
@@ -162,13 +162,6 @@ fn register<S: ExtendFormula>(
         s.add_clause(&sat_cl);
     }
     RefutationMapping { wrel, varmap }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Refutation {
-    num_worlds: usize,
-    accessibility: HashSet<(usize, usize)>,
-    valuation: HashMap<Var, Vec<bool>>,
 }
 
 #[cfg(test)]

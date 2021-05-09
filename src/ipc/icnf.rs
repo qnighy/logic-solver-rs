@@ -1,3 +1,5 @@
+use std::collections::{HashMap, HashSet};
+
 /// iCNF (implicational CNF), a modified version of CNF for intuitionistic logic.
 ///
 /// Traditional CNF can be seen as the following sequent:
@@ -127,4 +129,11 @@ pub mod ProofShorthands {
     pub fn ApplyImplS(cl_id: ClId, lhs: Proof, rhs: Proof) -> Proof {
         Proof::ApplyImplS(cl_id, lhs, rhs)
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Refutation {
+    pub num_worlds: usize,
+    pub accessibility: HashSet<(usize, usize)>,
+    pub valuation: HashMap<Var, Vec<bool>>,
 }
