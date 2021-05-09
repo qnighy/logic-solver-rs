@@ -1,0 +1,122 @@
+---
+source: tests/latex.rs
+expression: "run(\"A ∨ ¬ A\")"
+
+---
+\documentclass[a4paper,twoside=false,DIV=16]{scrartcl}
+\usepackage{bussproofs}
+\usepackage{colortbl}
+\usepackage{varwidth}
+\usepackage{pifont}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{xpatch}
+\usepackage{tikz}
+
+\usetikzlibrary{graphs}
+\usetikzlibrary{graphdrawing}
+\usetikzlibrary{decorations.pathmorphing}
+\usegdlibrary{layered}
+
+\newcommand{\cmark}{\textcolor{blue}{\ding{52}}}%
+\newcommand{\xmark}{\textcolor{red}{\ding{56}}}%
+
+\lstset{%
+  basicstyle={\small},%
+  identifierstyle={\small},%
+  commentstyle={\small\itshape},%
+  keywordstyle={\small\bfseries},%
+  ndkeywordstyle={\small},%
+  stringstyle={\small\ttfamily},
+  frame={tb},
+  breaklines=true,
+  columns=[l]{fullflexible},%
+  numbers=left,%
+  xrightmargin=0em,%
+  xleftmargin=3em,%
+  numberstyle={\scriptsize},%
+  stepnumber=1,
+  numbersep=1em,%
+  lineskip=-0.5ex%
+}
+
+\title{Logic solver result}
+
+\makeatletter
+% remove author, date, publishers
+\xpatchcmd{\@maketitle}
+  {%
+    {%
+      \usekomafont{author}{%
+        \lineskip .5em%
+        \begin{tabular}[t]{c}
+          \@author
+        \end{tabular}\par
+      }%
+    }%
+    \vskip 1em%
+    {\usekomafont{date}{\@date \par}}%
+    \vskip \z@ \@plus 1em
+    {\usekomafont{publishers}{\@publishers \par}}%
+  }
+  {}{}{\PatchFailed}
+\makeatother
+
+\begin{document}
+
+\maketitle
+
+
+\begin{center}
+\begin{tabular}{|c|}
+  \hline
+  \cellcolor[gray]{0.8}
+  \begin{minipage}{10cm}
+    \centering
+    Result
+  \end{minipage}
+  \\\hline
+
+  {
+    \huge
+
+
+    \xmark
+    Not provable
+
+  }
+  \\\hline
+\end{tabular}
+\end{center}
+
+\section*{Input}
+
+$A \vee \lnot A$
+
+\section*{Refutation}
+
+Refutation in Kripke model:
+
+\begin{tikzpicture}[layered layout, level distance=2cm, sibling distance=2cm, nodes={{circle, draw}}, acc/.style={{decorate,decoration=snake}}]
+\node (w0) {$W_0$};
+\node (w1) {$W_1$};
+\draw (w0) edge[->,acc] (w1);
+\end{tikzpicture}
+
+
+\begin{tabular}{r|cc}
+& $W_0$& $W_1$
+\\\hline\hline
+A & 0 & 1
+\\
+\bot & 0 & 0
+\\
+\lnot A & 0 & 0
+\\
+A \vee \lnot A & 0 & 1
+\end{tabular}
+
+
+
+
+\end{document}
