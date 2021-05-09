@@ -79,11 +79,6 @@ fn mark_split(pf: &mut VisibleProof) -> (u32, u32) {
         }
         VisibleProofKind::SplitRef(_) => unreachable!("this tree is already split"),
     };
-    eprintln!(
-        "self_weight = {}, total_weight = {}",
-        self_weight,
-        std::cmp::max(self_weight, subproof_weight)
-    );
     (self_weight, std::cmp::max(self_weight, subproof_weight))
 }
 
