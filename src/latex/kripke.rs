@@ -1,5 +1,6 @@
 use std::fmt;
 
+use super::prop::write_prop_latex;
 use crate::kripke::VisibleKripkeRefutation;
 
 pub(super) fn kripke_frame_latex(rft: &VisibleKripkeRefutation) -> String {
@@ -7,6 +8,16 @@ pub(super) fn kripke_frame_latex(rft: &VisibleKripkeRefutation) -> String {
     impl fmt::Display for D<'_> {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             write_kripke_frame_latex(self.0, f)
+        }
+    }
+    D(rft).to_string()
+}
+
+pub(super) fn kripke_assignment_latex(rft: &VisibleKripkeRefutation) -> String {
+    struct D<'a>(&'a VisibleKripkeRefutation);
+    impl fmt::Display for D<'_> {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            write_kripke_assignment_latex(self.0, f)
         }
     }
     D(rft).to_string()
@@ -25,7 +36,7 @@ fn write_kripke_frame_latex(rft: &VisibleKripkeRefutation, f: &mut fmt::Formatte
         }
     }
     f.write_str(
-        "\\begin{tikzpicture}[layered layout, level distance=2cm, sibling distance=2cm, nodes={{circle, draw}}, acc/.style={{decorate,decoration=snake,arrow head=5mm}}]\n",
+        "\\begin{tikzpicture}[layered layout, level distance=2cm, sibling distance=2cm, nodes={{circle, draw}}, acc/.style={{decorate,decoration=snake}}]\n",
     )?;
     for i in 0..hasse.len() {
         writeln!(f, "\\node (w{}) {{$W_{}$}};", i, i)?;
@@ -36,5 +47,40 @@ fn write_kripke_frame_latex(rft: &VisibleKripkeRefutation, f: &mut fmt::Formatte
         }
     }
     f.write_str("\\end{tikzpicture}\n")?;
+    Ok(())
+}
+
+fn write_kripke_assignment_latex(
+    rft: &VisibleKripkeRefutation,
+    f: &mut fmt::Formatter,
+) -> fmt::Result {
+    write!(f, "\\begin{{tabular}}{{r|")?;
+    for _ in 0..rft.num_worlds {
+        write!(f, "c")?;
+    }
+    writeln!(f, "}}")?;
+    for i in 0..rft.num_worlds {
+        write!(f, "& $W_{}$", i)?;
+    }
+    writeln!(f)?;
+    writeln!(f, "\\\\\\hline\\hline")?;
+    let mut init = true;
+    for (prop, val) in &rft.valuation {
+        if init {
+            init = false;
+        } else {
+            writeln!(f, "\\\\")?;
+        }
+        write_prop_latex(prop, f)?;
+        for &v in val {
+            if v {
+                write!(f, " & 1")?;
+            } else {
+                write!(f, " & 0")?;
+            }
+        }
+        writeln!(f)?;
+    }
+    writeln!(f, "\\end{{tabular}}")?;
     Ok(())
 }

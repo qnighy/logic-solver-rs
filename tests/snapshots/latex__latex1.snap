@@ -97,9 +97,16 @@ $A$
 
 Refutation in Kripke model:
 
-\begin{tikzpicture}[layered layout, level distance=2cm, sibling distance=2cm, nodes={{circle, draw}}, acc/.style={{decorate,decoration=snake,arrow head=5mm}}]
+\begin{tikzpicture}[layered layout, level distance=2cm, sibling distance=2cm, nodes={{circle, draw}}, acc/.style={{decorate,decoration=snake}}]
 \node (w0) {$W_0$};
 \end{tikzpicture}
+
+
+\begin{tabular}{r|c}
+& $W_0$
+\\\hline\hline
+A & 0
+\end{tabular}
 
 
 

@@ -1,6 +1,6 @@
 use askama::Template;
 
-use self::kripke::kripke_frame_latex;
+use self::kripke::{kripke_assignment_latex, kripke_frame_latex};
 use self::nj::nj_latex;
 use self::prop::prop_latex;
 use self::split::split_proof;
@@ -29,6 +29,7 @@ struct SuccessTemplate {
 #[derive(Debug, Clone)]
 struct Refutation {
     frame: String,
+    assignment: String,
 }
 
 pub fn success_latex(
@@ -59,6 +60,7 @@ pub fn success_latex(
         proofs,
         refutation: rft.map(|rft| Refutation {
             frame: kripke_frame_latex(rft),
+            assignment: kripke_assignment_latex(rft),
         }),
     }
     .render()

@@ -97,9 +97,28 @@ $(A \to B \to A) \wedge (A \vee B \to B)$
 
 Refutation in Kripke model:
 
-\begin{tikzpicture}[layered layout, level distance=2cm, sibling distance=2cm, nodes={{circle, draw}}, acc/.style={{decorate,decoration=snake,arrow head=5mm}}]
+\begin{tikzpicture}[layered layout, level distance=2cm, sibling distance=2cm, nodes={{circle, draw}}, acc/.style={{decorate,decoration=snake}}]
 \node (w0) {$W_0$};
 \end{tikzpicture}
+
+
+\begin{tabular}{r|c}
+& $W_0$
+\\\hline\hline
+A & 1
+\\
+B & 0
+\\
+B \to A & 1
+\\
+A \to B \to A & 1
+\\
+A \vee B & 1
+\\
+A \vee B \to B & 0
+\\
+(A \to B \to A) \wedge (A \vee B \to B) & 0
+\end{tabular}
 
 
 
