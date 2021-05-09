@@ -12,7 +12,6 @@ pub fn try_refute_icnf(vargen: &VarGen, icnf: &Icnf) -> Option<Refutation> {
         let satisfiable = solver.solve().unwrap();
         if satisfiable {
             let model = solver.model().unwrap().into_iter().collect::<HashSet<_>>();
-            eprintln!("model = {:?}", model);
             let mut accessibility = vec![Vec::new(); num_worlds];
             #[allow(clippy::needless_range_loop)]
             for w0 in 0..num_worlds {

@@ -1,7 +1,8 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::debruijn::Idx;
-use crate::ipc::icnf::{ClId, Clause, ClauseSet, Icnf, Proof, Var, VarGen};
+use crate::ipc::icnf::{ClId, Clause, ClauseSet, Icnf, Proof, Refutation, Var, VarGen};
+use crate::kripke::KripkeRefutation;
 use crate::nj::{Proof as NjProof, ProofKind as NjProofKind};
 use crate::prop::{Id, Prop};
 
@@ -140,6 +141,43 @@ impl Decomposition {
         NjProof {
             kind,
             prop: goal_prop,
+        }
+    }
+
+    pub fn convert_kripke(&self, rft: &Refutation) -> KripkeRefutation {
+        let num_worlds = rft.num_worlds;
+        let accessibility = rft.accessibility.clone();
+        let mut subprops = Vec::new();
+        let mut valuation = HashMap::<Var, Vec<bool>>::new();
+        for (v, sp) in self.prop_map.iter() {
+            let val = match sp {
+                &ShallowProp::Atom(_) => rft.valuation[&v].clone(),
+                &ShallowProp::Impl(lhs, rhs, _) => {
+                    let lhs_val = &valuation[&lhs];
+                    let rhs_val = &valuation[&rhs];
+                    (0..num_worlds)
+                        .map(|w| accessibility[w].iter().all(|&v| !lhs_val[v] || rhs_val[v]))
+                        .collect::<Vec<_>>()
+                }
+                ShallowProp::Conj(children, _) => (0..num_worlds)
+                    .map(|w| children.iter().all(|&child| valuation[&child][w]))
+                    .collect::<Vec<_>>(),
+                ShallowProp::Disj(children) => (0..num_worlds)
+                    .map(|w| children.iter().any(|&child| valuation[&child][w]))
+                    .collect::<Vec<_>>(),
+            };
+            valuation.insert(v, val);
+            subprops.push(self.prop_map.get_prop(v));
+        }
+        let valuation = valuation
+            .into_iter()
+            .map(|(v, val)| (self.prop_map.get_prop(v), val))
+            .collect::<HashMap<_, _>>();
+        KripkeRefutation {
+            num_worlds,
+            accessibility,
+            subprops,
+            valuation,
         }
     }
 }

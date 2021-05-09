@@ -10,6 +10,7 @@ use crate::prop::{Env, IdGen};
 
 pub mod debruijn;
 pub mod ipc;
+pub mod kripke;
 pub mod latex;
 pub mod naming;
 pub mod nj;
