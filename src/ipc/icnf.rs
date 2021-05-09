@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 /// iCNF (implicational CNF), a modified version of CNF for intuitionistic logic.
 ///
@@ -134,6 +134,7 @@ pub mod ProofShorthands {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Refutation {
     pub num_worlds: usize,
-    pub accessibility: HashSet<(usize, usize)>,
+    // accessibility[w0] = list of worlds reachable from w0
+    pub accessibility: Vec<Vec<usize>>,
     pub valuation: HashMap<Var, Vec<bool>>,
 }

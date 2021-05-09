@@ -13,13 +13,14 @@ pub fn try_refute_icnf(vargen: &VarGen, icnf: &Icnf) -> Option<Refutation> {
         if satisfiable {
             let model = solver.model().unwrap().into_iter().collect::<HashSet<_>>();
             eprintln!("model = {:?}", model);
-            let mut accessibility = HashSet::new();
+            let mut accessibility = vec![Vec::new(); num_worlds];
+            #[allow(clippy::needless_range_loop)]
             for w0 in 0..num_worlds {
-                accessibility.insert((w0, w0));
+                accessibility[w0].push(w0);
                 for w1 in (w0 + 1)..num_worlds {
                     let rel = mapping.wrel[w0 * num_worlds + w1];
                     if model.contains(&rel.positive()) {
-                        accessibility.insert((w0, w1));
+                        accessibility[w0].push(w1);
                     }
                 }
             }
@@ -169,7 +170,6 @@ mod tests {
     use super::*;
     use crate::ipc::icnf::ClauseSet;
     use insta::{assert_debug_snapshot, assert_snapshot};
-    use maplit::hashset;
     use varisat::dimacs::write_dimacs;
     use varisat::CnfFormula;
 
@@ -226,7 +226,7 @@ mod tests {
         assert_eq!(refutation.num_worlds, 3);
         assert_eq!(
             refutation.accessibility,
-            hashset![(0, 0), (0, 1), (0, 2), (1, 1), (2, 2)]
+            vec![vec![0, 1, 2], vec![1], vec![2]]
         );
         let aval = &refutation.valuation[&a];
         let bval = &refutation.valuation[&b];
