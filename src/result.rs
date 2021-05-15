@@ -22,6 +22,19 @@ impl SolverResultPair {
             }
         }
     }
+
+    pub fn reduce_duplicate_details(&mut self) {
+        if matches!(&self.int, SolverResult::Provable(Some(_)))
+            && matches!(&self.cl, SolverResult::Provable(Some(_)))
+        {
+            self.cl = SolverResult::Provable(None);
+        }
+        if matches!(&self.int, SolverResult::NotProvable(Some(_)))
+            && matches!(&self.cl, SolverResult::NotProvable(Some(_)))
+        {
+            self.int = SolverResult::NotProvable(None);
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

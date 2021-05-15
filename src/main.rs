@@ -85,6 +85,7 @@ fn main2() -> Result<(), LogicSolverError> {
         res.update_int(try_refute_res(&prop));
     }
     if opt.latex {
+        res.reduce_duplicate_details();
         let latex_src = success_latex(&ast, &res, &env);
         let stdout = io::stdout();
         let mut stdout = stdout.lock();
