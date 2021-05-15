@@ -23,6 +23,16 @@ pub(super) fn kripke_assignment_latex(rft: &VisibleKripkeRefutation) -> String {
     D(rft).to_string()
 }
 
+pub(super) fn classical_assignment_latex(rft: &VisibleKripkeRefutation) -> String {
+    struct D<'a>(&'a VisibleKripkeRefutation);
+    impl fmt::Display for D<'_> {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            write_classical_assignment_latex(self.0, f)
+        }
+    }
+    D(rft).to_string()
+}
+
 fn write_kripke_frame_latex(rft: &VisibleKripkeRefutation, f: &mut fmt::Formatter) -> fmt::Result {
     let mut hasse = rft.accessibility.clone();
     for (i, nexts) in rft.accessibility.iter().enumerate() {
@@ -80,6 +90,30 @@ fn write_kripke_assignment_latex(
             }
         }
         writeln!(f)?;
+    }
+    writeln!(f, "\\end{{tabular}}")?;
+    Ok(())
+}
+
+fn write_classical_assignment_latex(
+    rft: &VisibleKripkeRefutation,
+    f: &mut fmt::Formatter,
+) -> fmt::Result {
+    assert_eq!(rft.num_worlds, 1);
+    writeln!(f, "\\begin{{tabular}}{{r|c}}")?;
+    let mut init = true;
+    for (prop, val) in &rft.valuation {
+        if init {
+            init = false;
+        } else {
+            writeln!(f, "\\\\")?;
+        }
+        write_prop_latex(prop, f)?;
+        if val[0] {
+            writeln!(f, " & 1")?;
+        } else {
+            writeln!(f, " & 0")?;
+        }
     }
     writeln!(f, "\\end{{tabular}}")?;
     Ok(())

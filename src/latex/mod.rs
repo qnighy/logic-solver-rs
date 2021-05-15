@@ -1,6 +1,6 @@
 use askama::Template;
 
-use self::kripke::{kripke_assignment_latex, kripke_frame_latex};
+use self::kripke::{classical_assignment_latex, kripke_assignment_latex, kripke_frame_latex};
 use self::nj::nj_latex;
 use self::prop::prop_latex;
 use self::split::split_proof;
@@ -20,7 +20,7 @@ struct SuccessTemplate {
     #[allow(dead_code)]
     prop: String,
     #[allow(dead_code)]
-    cl_result: SolverResult<Vec<ProofFragment>, Refutation>,
+    cl_result: SolverResult<Vec<ProofFragment>, ClassicalRefutation>,
     #[allow(dead_code)]
     int_result: SolverResult<Vec<ProofFragment>, Refutation>,
 }
@@ -29,6 +29,11 @@ struct SuccessTemplate {
 struct ProofFragment {
     name: String,
     source: String,
+}
+
+#[derive(Debug, Clone)]
+struct ClassicalRefutation {
+    assignment: String,
 }
 
 #[derive(Debug, Clone)]
@@ -41,9 +46,8 @@ pub fn success_latex(prop: &PropAst, res: &SolverResultPair, env: &Env) -> Strin
     let cl_result = match &res.cl {
         SolverResult::NotProvable(rft) => SolverResult::NotProvable(rft.as_ref().map(|rft| {
             let rft = promote_kripke(rft, env);
-            Refutation {
-                frame: kripke_frame_latex(&rft),
-                assignment: kripke_assignment_latex(&rft),
+            ClassicalRefutation {
+                assignment: classical_assignment_latex(&rft),
             }
         })),
         SolverResult::Unknown => SolverResult::Unknown,

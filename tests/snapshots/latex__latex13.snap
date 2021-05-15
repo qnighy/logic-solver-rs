@@ -1,6 +1,6 @@
 ---
 source: tests/latex.rs
-expression: "run(\"(A → B → A) ∧ (A ∨ B → B)\")"
+expression: "run(\"A → B\")"
 
 ---
 \documentclass[a4paper,twoside=false,DIV=16]{scrartcl}
@@ -100,7 +100,7 @@ expression: "run(\"(A → B → A) ∧ (A ∨ B → B)\")"
 
 \section*{Input}
 
-$(A \to B \to A) \wedge (A \vee B \to B)$
+$A \to B$
 
 \section*{Refutation}
 
@@ -111,15 +111,7 @@ A & 1
 \\
 B & 0
 \\
-B \to A & 1
-\\
-A \to B \to A & 1
-\\
-A \vee B & 1
-\\
-A \vee B \to B & 0
-\\
-(A \to B \to A) \wedge (A \vee B \to B) & 0
+A \to B & 0
 \end{tabular}
 
 \end{document}
