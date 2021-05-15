@@ -1,5 +1,5 @@
 use crate::debruijn::{DbCtx, Idx, Shift};
-use crate::prop::Prop;
+use crate::prop::{ConjType, ImplType, Prop};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Proof {
@@ -12,11 +12,11 @@ pub enum ProofKind {
     /// variable in de Bruijn index
     Var(Idx),
     /// `\x => t`
-    Abs(Box<Proof>),
+    Abs(Box<Proof>, ImplType),
     /// `t1 t2`
-    App(Box<Proof>, Box<Proof>),
+    App(Box<Proof>, Box<Proof>, ImplType),
     /// `(t1, t2, ..., tN)`
-    ConjIntro(Vec<Proof>),
+    ConjIntro(Vec<Proof>, ConjType),
     /// `let (.., x, ..) = t in x`
     ConjElim(
         Box<Proof>,
@@ -24,6 +24,7 @@ pub enum ProofKind {
         usize,
         /// n = length of the tuple
         usize,
+        ConjType,
     ),
     /// `CtorI<p1, p2, ..., pN>(t)`
     DisjIntro(Box<Proof>, usize, usize),
@@ -71,25 +72,25 @@ impl Proof {
             ProofKind::Var(idx) => {
                 assert_eqtype!(ctx[idx], self.prop);
             }
-            ProofKind::Abs(ref body) => {
+            ProofKind::Abs(ref body, _) => {
                 let (abstype, body_type) = self.prop.as_impl().unwrap();
                 let mut ctx = ctx.push(abstype.clone());
                 body.check_has_type_in(&mut ctx, body_type);
             }
-            ProofKind::App(ref lhs, ref rhs) => {
+            ProofKind::App(ref lhs, ref rhs, _) => {
                 let (ltl, ltr) = lhs.prop.as_impl().unwrap();
                 assert_eqtype!(*ltr, self.prop);
                 lhs.check_type_in(ctx);
                 rhs.check_has_type_in(ctx, ltl);
             }
-            ProofKind::ConjIntro(ref children) => {
+            ProofKind::ConjIntro(ref children, _) => {
                 let child_types = self.prop.as_conj().unwrap();
                 assert_eq!(children.len(), child_types.len());
                 for (child, child_type) in children.iter().zip(child_types) {
                     child.check_has_type_in(ctx, child_type);
                 }
             }
-            ProofKind::ConjElim(ref sub, i, n) => {
+            ProofKind::ConjElim(ref sub, i, n, _) => {
                 let child_types = sub.prop.as_conj().unwrap();
                 assert_eq!(child_types.len(), n);
                 assert_eqtype!(child_types[i], self.prop);
@@ -116,17 +117,17 @@ impl Proof {
         while self.try_reduce_here() {}
         match self.kind {
             ProofKind::Var(_) => {}
-            ProofKind::Abs(ref mut body) => body.reduce_all(),
-            ProofKind::App(ref mut lhs, ref mut rhs) => {
+            ProofKind::Abs(ref mut body, _) => body.reduce_all(),
+            ProofKind::App(ref mut lhs, ref mut rhs, _) => {
                 lhs.reduce_all();
                 rhs.reduce_all();
             }
-            ProofKind::ConjIntro(ref mut children) => {
+            ProofKind::ConjIntro(ref mut children, _) => {
                 for child in children {
                     child.reduce_all();
                 }
             }
-            ProofKind::ConjElim(ref mut sub, _, _) => sub.reduce_all(),
+            ProofKind::ConjElim(ref mut sub, _, _, _) => sub.reduce_all(),
             ProofKind::DisjIntro(ref mut sub, _, _) => sub.reduce_all(),
             ProofKind::DisjElim(ref mut sub, ref mut branches) => {
                 sub.reduce_all();
@@ -144,16 +145,16 @@ impl Proof {
         };
 
         match self.kind {
-            ProofKind::App(ref mut fun, ref mut arg) => {
-                if let ProofKind::Abs(ref mut body) = fun.kind {
+            ProofKind::App(ref mut fun, ref mut arg, _) => {
+                if let ProofKind::Abs(ref mut body, _) = fun.kind {
                     body.subst(Idx(0), arg, 0);
                     let body = std::mem::replace(&mut **body, SENTINEL);
                     *self = body;
                     return true;
                 }
             }
-            ProofKind::ConjElim(ref mut tup, i, _) => {
-                if let ProofKind::ConjIntro(ref mut elems) = tup.kind {
+            ProofKind::ConjElim(ref mut tup, i, _, _) => {
+                if let ProofKind::ConjIntro(ref mut elems, _) = tup.kind {
                     let elem = elems.swap_remove(i);
                     *self = elem;
                     return true;
@@ -183,19 +184,19 @@ impl Proof {
                     *self = repl.shifted(target.s(), by);
                 }
             }
-            ProofKind::Abs(ref mut body) => {
+            ProofKind::Abs(ref mut body, _) => {
                 body.subst(target.s(), repl, by + 1);
             }
-            ProofKind::App(ref mut lhs, ref mut rhs) => {
+            ProofKind::App(ref mut lhs, ref mut rhs, _) => {
                 lhs.subst(target, repl, by);
                 rhs.subst(target, repl, by);
             }
-            ProofKind::ConjIntro(ref mut children) => {
+            ProofKind::ConjIntro(ref mut children, _) => {
                 for child in children {
                     child.subst(target, repl, by);
                 }
             }
-            ProofKind::ConjElim(ref mut sub, _, _) => {
+            ProofKind::ConjElim(ref mut sub, _, _, _) => {
                 sub.subst(target, repl, by);
             }
             ProofKind::DisjIntro(ref mut sub, _, _) => {
@@ -213,18 +214,18 @@ impl Proof {
 
 impl ProofKind {
     #[allow(non_snake_case)]
-    pub fn AbsS(body: Proof) -> Self {
-        Self::Abs(Box::new(body))
+    pub fn AbsS(body: Proof, it: ImplType) -> Self {
+        Self::Abs(Box::new(body), it)
     }
 
     #[allow(non_snake_case)]
-    pub fn AppS(lhs: Proof, rhs: Proof) -> Self {
-        Self::App(Box::new(lhs), Box::new(rhs))
+    pub fn AppS(lhs: Proof, rhs: Proof, it: ImplType) -> Self {
+        Self::App(Box::new(lhs), Box::new(rhs), it)
     }
 
     #[allow(non_snake_case)]
-    pub fn ConjElimS(sub: Proof, i: usize, n: usize) -> Self {
-        Self::ConjElim(Box::new(sub), i, n)
+    pub fn ConjElimS(sub: Proof, i: usize, n: usize, ct: ConjType) -> Self {
+        Self::ConjElim(Box::new(sub), i, n, ct)
     }
 
     #[allow(non_snake_case)]
@@ -244,19 +245,19 @@ impl Shift for Proof {
             ProofKind::Var(ref mut idx) => {
                 idx.shift(after, by);
             }
-            ProofKind::Abs(ref mut body) => {
+            ProofKind::Abs(ref mut body, _) => {
                 body.shift(after.s(), by);
             }
-            ProofKind::App(ref mut lhs, ref mut rhs) => {
+            ProofKind::App(ref mut lhs, ref mut rhs, _) => {
                 lhs.shift(after, by);
                 rhs.shift(after, by);
             }
-            ProofKind::ConjIntro(ref mut children) => {
+            ProofKind::ConjIntro(ref mut children, _) => {
                 for child in children {
                     child.shift(after, by);
                 }
             }
-            ProofKind::ConjElim(ref mut sub, _, _) => {
+            ProofKind::ConjElim(ref mut sub, _, _, _) => {
                 sub.shift(after, by);
             }
             ProofKind::DisjIntro(ref mut sub, _, _) => {
@@ -278,18 +279,18 @@ pub mod ProofKindShorthands {
     pub use ProofKind::*;
 
     #[allow(non_snake_case)]
-    pub fn AbsS(body: Proof) -> ProofKind {
-        ProofKind::AbsS(body)
+    pub fn AbsS(body: Proof, it: ImplType) -> ProofKind {
+        ProofKind::AbsS(body, it)
     }
 
     #[allow(non_snake_case)]
-    pub fn AppS(lhs: Proof, rhs: Proof) -> ProofKind {
-        ProofKind::AppS(lhs, rhs)
+    pub fn AppS(lhs: Proof, rhs: Proof, it: ImplType) -> ProofKind {
+        ProofKind::AppS(lhs, rhs, it)
     }
 
     #[allow(non_snake_case)]
-    pub fn ConjElimS(sub: Proof, i: usize, n: usize) -> ProofKind {
-        ProofKind::ConjElimS(sub, i, n)
+    pub fn ConjElimS(sub: Proof, i: usize, n: usize, ct: ConjType) -> ProofKind {
+        ProofKind::ConjElimS(sub, i, n, ct)
     }
 
     #[allow(non_snake_case)]
@@ -317,10 +318,13 @@ mod tests {
         let id1 = idgen.fresh();
         let pf = Proof {
             prop: ImplS(Atom(id1), Atom(id1)),
-            kind: AbsS(Proof {
-                prop: Atom(id1),
-                kind: Var(Idx(0)),
-            }),
+            kind: AbsS(
+                Proof {
+                    prop: Atom(id1),
+                    kind: Var(Idx(0)),
+                },
+                ImplType::Normal,
+            ),
         };
         pf.check_type();
     }
@@ -354,20 +358,26 @@ mod tests {
         };
         let arg = Proof {
             prop: ImplS(a(), a()),
-            kind: AbsS(Proof {
-                prop: a(),
-                kind: Var(Idx(0)),
-            }),
+            kind: AbsS(
+                Proof {
+                    prop: a(),
+                    kind: Var(Idx(0)),
+                },
+                ImplType::Normal,
+            ),
         };
         body.subst(Idx(0), &arg, 0);
         assert_eq!(
             body,
             Proof {
                 prop: ImplS(a(), a()),
-                kind: AbsS(Proof {
-                    prop: a(),
-                    kind: Var(Idx(0))
-                })
+                kind: AbsS(
+                    Proof {
+                        prop: a(),
+                        kind: Var(Idx(0))
+                    },
+                    ImplType::Normal
+                )
             }
         );
     }
@@ -385,18 +395,25 @@ mod tests {
             kind: AppS(
                 Proof {
                     prop: ImplS(ImplS(a(), a()), ImplS(a(), a())),
-                    kind: AbsS(Proof {
-                        prop: ImplS(a(), a()),
-                        kind: Var(Idx(0)),
-                    }),
+                    kind: AbsS(
+                        Proof {
+                            prop: ImplS(a(), a()),
+                            kind: Var(Idx(0)),
+                        },
+                        ImplType::Normal,
+                    ),
                 },
                 Proof {
                     prop: ImplS(a(), a()),
-                    kind: AbsS(Proof {
-                        prop: a(),
-                        kind: Var(Idx(0)),
-                    }),
+                    kind: AbsS(
+                        Proof {
+                            prop: a(),
+                            kind: Var(Idx(0)),
+                        },
+                        ImplType::Normal,
+                    ),
                 },
+                ImplType::Normal,
             ),
         };
         let updated = pf.try_reduce_here();
@@ -405,10 +422,13 @@ mod tests {
             pf,
             Proof {
                 prop: ImplS(a(), a()),
-                kind: AbsS(Proof {
-                    prop: a(),
-                    kind: Var(Idx(0))
-                })
+                kind: AbsS(
+                    Proof {
+                        prop: a(),
+                        kind: Var(Idx(0))
+                    },
+                    ImplType::Normal
+                )
             }
         );
     }
@@ -422,20 +442,26 @@ mod tests {
         let id1 = idgen.fresh();
         let mut pf = Proof {
             prop: ImplS(Atom(id1), Atom(id1)),
-            kind: AbsS(Proof {
-                prop: Atom(id1),
-                kind: Var(Idx(0)),
-            }),
+            kind: AbsS(
+                Proof {
+                    prop: Atom(id1),
+                    kind: Var(Idx(0)),
+                },
+                ImplType::Normal,
+            ),
         };
         pf.reduce_all();
         assert_eq!(
             pf,
             Proof {
                 prop: ImplS(Atom(id1), Atom(id1)),
-                kind: AbsS(Proof {
-                    prop: Atom(id1),
-                    kind: Var(Idx(0))
-                })
+                kind: AbsS(
+                    Proof {
+                        prop: Atom(id1),
+                        kind: Var(Idx(0))
+                    },
+                    ImplType::Normal
+                )
             }
         );
     }
@@ -453,18 +479,25 @@ mod tests {
             kind: AppS(
                 Proof {
                     prop: ImplS(ImplS(a(), a()), ImplS(a(), a())),
-                    kind: AbsS(Proof {
-                        prop: ImplS(a(), a()),
-                        kind: Var(Idx(0)),
-                    }),
+                    kind: AbsS(
+                        Proof {
+                            prop: ImplS(a(), a()),
+                            kind: Var(Idx(0)),
+                        },
+                        ImplType::Normal,
+                    ),
                 },
                 Proof {
                     prop: ImplS(a(), a()),
-                    kind: AbsS(Proof {
-                        prop: a(),
-                        kind: Var(Idx(0)),
-                    }),
+                    kind: AbsS(
+                        Proof {
+                            prop: a(),
+                            kind: Var(Idx(0)),
+                        },
+                        ImplType::Normal,
+                    ),
                 },
+                ImplType::Normal,
             ),
         };
         pf.reduce_all();
@@ -472,10 +505,13 @@ mod tests {
             pf,
             Proof {
                 prop: ImplS(a(), a()),
-                kind: AbsS(Proof {
-                    prop: a(),
-                    kind: Var(Idx(0))
-                })
+                kind: AbsS(
+                    Proof {
+                        prop: a(),
+                        kind: Var(Idx(0))
+                    },
+                    ImplType::Normal
+                )
             }
         );
     }

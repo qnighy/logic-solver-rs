@@ -34,7 +34,7 @@ mod tests {
     use super::*;
     use crate::debruijn::Idx;
     use crate::nj::ProofKindShorthands;
-    use crate::prop::{IdGen, PropShorthands};
+    use crate::prop::{IdGen, ImplType, PropShorthands};
 
     #[test]
     fn test_solve1() {
@@ -60,10 +60,13 @@ mod tests {
             pf,
             Proof {
                 prop: ImplS(a(), a()),
-                kind: AbsS(Proof {
-                    prop: a(),
-                    kind: Var(Idx(0))
-                })
+                kind: AbsS(
+                    Proof {
+                        prop: a(),
+                        kind: Var(Idx(0))
+                    },
+                    ImplType::Normal
+                )
             }
         );
     }
@@ -84,13 +87,19 @@ mod tests {
             pf,
             Proof {
                 prop: ImplS(a(), ImplS(b(), a())),
-                kind: AbsS(Proof {
-                    prop: ImplS(b(), a()),
-                    kind: AbsS(Proof {
-                        prop: a(),
-                        kind: Var(Idx(1))
-                    })
-                })
+                kind: AbsS(
+                    Proof {
+                        prop: ImplS(b(), a()),
+                        kind: AbsS(
+                            Proof {
+                                prop: a(),
+                                kind: Var(Idx(1))
+                            },
+                            ImplType::Normal
+                        )
+                    },
+                    ImplType::Normal
+                )
             }
         );
     }

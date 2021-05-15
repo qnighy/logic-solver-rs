@@ -10,6 +10,18 @@ pub enum Prop {
     Neg(Box<Prop>),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ImplType {
+    Normal,
+    Neg,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ConjType {
+    Normal,
+    Equiv,
+}
+
 static BOTTOM: Prop = Prop::Disj(vec![]);
 
 impl Prop {
@@ -72,6 +84,22 @@ impl Prop {
     pub fn as_disj(&self) -> Option<&[Prop]> {
         if let Prop::Disj(ref children) = *self {
             Some(children)
+        } else {
+            None
+        }
+    }
+
+    pub fn as_equiv(&self) -> Option<(&Prop, &Prop)> {
+        if let Prop::Equiv(lhs, rhs) = self {
+            Some((lhs, rhs))
+        } else {
+            None
+        }
+    }
+
+    pub fn as_neg(&self) -> Option<&Prop> {
+        if let Prop::Neg(sub) = self {
+            Some(sub)
         } else {
             None
         }

@@ -18,7 +18,7 @@ fn promote_nj_rec(
 ) -> VisibleProof {
     let kind = match pf.kind {
         ProofKind::Var(idx) => VisibleProofKind::Axiom(ctx[idx]),
-        ProofKind::Abs(ref body) => {
+        ProofKind::Abs(ref body, _) => {
             let hyp_id = ctr.fresh();
             let mut ctx = ctx.push(hyp_id);
             let body = promote_nj_rec(body, env, &mut ctx, ctr);
@@ -28,7 +28,7 @@ fn promote_nj_rec(
                 subproofs: vec![body],
             }
         }
-        ProofKind::App(ref lhs, ref rhs) => {
+        ProofKind::App(ref lhs, ref rhs, _) => {
             let lhs = promote_nj_rec(lhs, env, ctx, ctr);
             let rhs = promote_nj_rec(rhs, env, ctx, ctr);
             VisibleProofKind::SubProof {
@@ -37,7 +37,7 @@ fn promote_nj_rec(
                 subproofs: vec![lhs, rhs],
             }
         }
-        ProofKind::ConjIntro(ref children) => {
+        ProofKind::ConjIntro(ref children, _) => {
             let children = children
                 .iter()
                 .map(|child| promote_nj_rec(child, env, ctx, ctr))
@@ -48,7 +48,7 @@ fn promote_nj_rec(
                 subproofs: children,
             }
         }
-        ProofKind::ConjElim(ref sub, i, n) => {
+        ProofKind::ConjElim(ref sub, i, n, _) => {
             let sub = promote_nj_rec(sub, env, ctx, ctr);
             VisibleProofKind::SubProof {
                 rule: RuleName::ConjElim(i, n),
@@ -91,7 +91,7 @@ mod tests {
     use crate::debruijn::Idx;
     use crate::nj::ProofKindShorthands;
     use crate::parsing::Prop as PropAst;
-    use crate::prop::{IdGen, PropShorthands};
+    use crate::prop::{IdGen, ImplType, PropShorthands};
     use big_s::S;
 
     #[test]
@@ -106,10 +106,13 @@ mod tests {
 
         let pf = Proof {
             prop: ImplS(a(), a()),
-            kind: AbsS(Proof {
-                prop: a(),
-                kind: Var(Idx(0)),
-            }),
+            kind: AbsS(
+                Proof {
+                    prop: a(),
+                    kind: Var(Idx(0)),
+                },
+                ImplType::Normal,
+            ),
         };
         pf.check_type();
         let pf = promote_nj(&pf, &env);
