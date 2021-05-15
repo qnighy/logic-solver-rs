@@ -4,7 +4,7 @@ use crate::nj::Proof;
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct SolverResultPair {
     // Classical logic result
-    pub cl: SolverResult<Void, Void>,
+    pub cl: SolverResult<Void, KripkeRefutation>,
     // Intuitionistic logic result
     pub int: SolverResult<Proof, KripkeRefutation>,
 }
@@ -14,6 +14,12 @@ impl SolverResultPair {
         self.int.update(other_int);
         if matches!(&self.int, SolverResult::Provable(_)) {
             self.cl.update(SolverResult::Provable(None));
+        } else if let SolverResult::NotProvable(Some(rf)) = &self.int {
+            if rf.num_worlds > 1 {
+                self.cl.update(SolverResult::Provable(None));
+            } else {
+                self.cl.update(SolverResult::NotProvable(Some(rf.clone())));
+            }
         }
     }
 }

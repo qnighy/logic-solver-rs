@@ -7,7 +7,7 @@ use self::split::split_proof;
 use crate::naming::{promote_kripke, promote_nj};
 use crate::parsing::{ParseError, Prop as PropAst};
 use crate::prop::Env;
-use crate::result::{SolverResult, SolverResultPair, Void};
+use crate::result::{SolverResult, SolverResultPair};
 
 mod kripke;
 mod nj;
@@ -20,7 +20,7 @@ struct SuccessTemplate {
     #[allow(dead_code)]
     prop: String,
     #[allow(dead_code)]
-    cl_result: SolverResult<Void, Void>,
+    cl_result: SolverResult<Vec<ProofFragment>, Refutation>,
     #[allow(dead_code)]
     int_result: SolverResult<Vec<ProofFragment>, Refutation>,
 }
@@ -38,7 +38,17 @@ struct Refutation {
 }
 
 pub fn success_latex(prop: &PropAst, res: &SolverResultPair, env: &Env) -> String {
-    let cl_result = res.cl.clone();
+    let cl_result = match &res.cl {
+        SolverResult::NotProvable(rft) => SolverResult::NotProvable(rft.as_ref().map(|rft| {
+            let rft = promote_kripke(rft, env);
+            Refutation {
+                frame: kripke_frame_latex(&rft),
+                assignment: kripke_assignment_latex(&rft),
+            }
+        })),
+        SolverResult::Unknown => SolverResult::Unknown,
+        SolverResult::Provable(_) => SolverResult::Provable(None),
+    };
     let int_result = match &res.int {
         SolverResult::NotProvable(rft) => SolverResult::NotProvable(rft.as_ref().map(|rft| {
             let rft = promote_kripke(rft, env);

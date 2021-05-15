@@ -1,15 +1,34 @@
 <% extends "base.tex" %>
 <% block body %>
 \begin{center}
-\begin{tabular}{|c|}
+\begin{tabular}{|c|c|}
   \hline
   \cellcolor[gray]{0.8}
-  \begin{minipage}{10cm}
+  \begin{minipage}{5cm}
     \centering
-    Result
+    Classical Logic
+  \end{minipage}
+  &
+  \cellcolor[gray]{0.8}
+  \begin{minipage}{5cm}
+    \centering
+    Intuitionistic Logic
   \end{minipage}
   \\\hline
 
+  {
+    \huge
+<%- if cl_result.is_provable() %>
+    \cmark
+    Provable
+<%- else if cl_result.is_not_provable() %>
+    \xmark
+    Not provable
+<%- else %>
+    Unknown
+<%- endif %>
+  }
+  &
   {
     \huge
 <%- if int_result.is_provable() %>
@@ -31,6 +50,36 @@
 $<= prop %>$
 
 <% match int_result %>
+<%- when SolverResult::Provable with (pf) %>
+<%- match pf %>
+<%- when Some with (pf) -%>
+\section*{Proof}
+<% for fragment in pf %>
+<%- if pf.len() > 1 %>
+\subsection*{<= fragment.name %>}
+<%- endif %>
+\begin{prooftree}
+<= fragment.source -%>
+\end{prooftree}
+<% endfor %>
+
+<%- when None %>
+<%- endmatch %>
+
+<%- when SolverResult::NotProvable with (rft) %>
+<%- match rft %>
+<%- when Some with (rft) -%>
+\section*{Refutation}
+
+Refutation in Kripke model:
+
+<= rft.frame %>
+<= rft.assignment %>
+<%- when None -%>
+<%- endmatch -%>
+<%- when SolverResult::Unknown -%>
+<%- endmatch -%>
+<% match cl_result %>
 <%- when SolverResult::Provable with (pf) %>
 <%- match pf %>
 <%- when Some with (pf) -%>

@@ -68,15 +68,27 @@ expression: "run(\"A\")"
 
 
 \begin{center}
-\begin{tabular}{|c|}
+\begin{tabular}{|c|c|}
   \hline
   \cellcolor[gray]{0.8}
-  \begin{minipage}{10cm}
+  \begin{minipage}{5cm}
     \centering
-    Result
+    Classical Logic
+  \end{minipage}
+  &
+  \cellcolor[gray]{0.8}
+  \begin{minipage}{5cm}
+    \centering
+    Intuitionistic Logic
   \end{minipage}
   \\\hline
 
+  {
+    \huge
+    \xmark
+    Not provable
+  }
+  &
   {
     \huge
     \xmark
@@ -90,6 +102,19 @@ expression: "run(\"A\")"
 
 $A$
 
+\section*{Refutation}
+
+Refutation in Kripke model:
+
+\begin{tikzpicture}[layered layout, level distance=2cm, sibling distance=2cm, nodes={{circle, draw}}, acc/.style={{decorate,decoration=snake}}]
+\node (w0) {$W_0$};
+\end{tikzpicture}
+
+\begin{tabular}{r|c}
+& $W_0$
+\\\hline\hline
+A & 0
+\end{tabular}
 \section*{Refutation}
 
 Refutation in Kripke model:

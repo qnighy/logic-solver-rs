@@ -68,15 +68,27 @@ expression: "run(\"¬¬(A ∨ ¬A)\")"
 
 
 \begin{center}
-\begin{tabular}{|c|}
+\begin{tabular}{|c|c|}
   \hline
   \cellcolor[gray]{0.8}
-  \begin{minipage}{10cm}
+  \begin{minipage}{5cm}
     \centering
-    Result
+    Classical Logic
+  \end{minipage}
+  &
+  \cellcolor[gray]{0.8}
+  \begin{minipage}{5cm}
+    \centering
+    Intuitionistic Logic
   \end{minipage}
   \\\hline
 
+  {
+    \huge
+    \cmark
+    Provable
+  }
+  &
   {
     \huge
     \cmark
