@@ -41,18 +41,6 @@ impl Prop {
                         .all(|(l_child, r_child)| l_child.eqtype(r_child))
             }
             (Neg(l_sub), Neg(r_sub)) => l_sub.eqtype(r_sub),
-            (Impl(l_lhs, l_rhs), Neg(r_sub)) => l_lhs.eqtype(r_sub) && l_rhs.eqtype(&BOTTOM),
-            (Neg(l_sub), Impl(r_lhs, r_rhs)) => l_sub.eqtype(r_lhs) && BOTTOM.eqtype(r_rhs),
-            (Conj(l_children), Equiv(r_lhs, r_rhs)) => {
-                l_children.len() == 2
-                    && PropRef::expand(&l_children[0]).eqtype(&PropRef::Impl(r_lhs, r_rhs))
-                    && PropRef::expand(&l_children[1]).eqtype(&PropRef::Impl(r_rhs, r_lhs))
-            }
-            (Equiv(l_lhs, l_rhs), Conj(r_children)) => {
-                2 == r_children.len()
-                    && PropRef::Impl(l_lhs, l_rhs).eqtype(&PropRef::expand(&r_children[0]))
-                    && PropRef::Impl(l_rhs, l_lhs).eqtype(&PropRef::expand(&r_children[1]))
-            }
             (_, _) => false,
         }
     }
@@ -139,40 +127,6 @@ pub mod PropShorthands {
     #[allow(non_snake_case)]
     pub fn NegS(sub: Prop) -> Prop {
         Prop::NegS(sub)
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum PropRef<'a> {
-    Direct(&'a Prop),
-    Impl(&'a Prop, &'a Prop),
-}
-
-impl<'a> PropRef<'a> {
-    pub fn expand(prop: &'a Prop) -> Self {
-        match prop {
-            Prop::Impl(lhs, rhs) => PropRef::Impl(lhs, rhs),
-            Prop::Neg(sub) => PropRef::Impl(sub, &BOTTOM),
-            _ => PropRef::Direct(prop),
-        }
-    }
-    pub fn eqtype(&self, other: &PropRef<'a>) -> bool {
-        match (*self, *other) {
-            (PropRef::Direct(l), PropRef::Direct(r)) => l.eqtype(r),
-            (PropRef::Impl(l_lhs, l_rhs), PropRef::Impl(r_lhs, r_rhs)) => {
-                l_lhs.eqtype(r_lhs) && l_rhs.eqtype(r_rhs)
-            }
-            (_, _) => false,
-        }
-    }
-}
-
-impl<'a> From<PropRef<'a>> for Prop {
-    fn from(r: PropRef<'a>) -> Self {
-        match r {
-            PropRef::Direct(prop) => prop.clone(),
-            PropRef::Impl(lhs, rhs) => Prop::Impl(Box::new(lhs.clone()), Box::new(rhs.clone())),
-        }
     }
 }
 
@@ -272,8 +226,8 @@ mod tests {
 
         let lhs = NegS(Atom(Id(0)));
         let rhs = ImplS(Atom(Id(0)), Disj(vec![]));
-        assert!(lhs.eqtype(&rhs));
-        assert!(rhs.eqtype(&lhs));
+        assert!(!lhs.eqtype(&rhs));
+        assert!(!rhs.eqtype(&lhs));
     }
 
     #[test]
@@ -285,8 +239,8 @@ mod tests {
             ImplS(Atom(Id(0)), Atom(Id(1))),
             ImplS(Atom(Id(1)), Atom(Id(0))),
         ]);
-        assert!(lhs.eqtype(&rhs));
-        assert!(rhs.eqtype(&lhs));
+        assert!(!lhs.eqtype(&rhs));
+        assert!(!rhs.eqtype(&lhs));
     }
 
     #[test]
