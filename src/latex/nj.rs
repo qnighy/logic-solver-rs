@@ -92,6 +92,7 @@ pub(crate) fn write_rule_latex(rule: RuleName, f: &mut fmt::Formatter) -> fmt::R
         }
         RuleName::DisjElim(0) => f.write_str("{\\bot}_E")?,
         RuleName::DisjElim(_) => f.write_str("{\\vee}_E")?,
+        RuleName::DNegElim => f.write_str("\\lnot\\lnot_E")?,
     }
     Ok(())
 }

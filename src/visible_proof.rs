@@ -47,4 +47,5 @@ pub enum RuleName {
     ConjElim(usize, usize),
     DisjIntro(usize, usize),
     DisjElim(usize),
+    DNegElim,
 }

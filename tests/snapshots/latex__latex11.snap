@@ -102,6 +102,32 @@ expression: "run(\"¬¬A → A\")"
 
 $\lnot \lnot A \to A$
 
+\section*{Proof}
+
+\begin{prooftree}
+\AxiomC{$[\lnot (\lnot \lnot A \to A)]_{1}$}
+\AxiomC{$[\lnot \lnot A]_{2}$}
+\AxiomC{$[\lnot (\lnot \lnot A \to A)]_{1}$}
+\AxiomC{$[A]_{3}$}
+\RightLabel{\scriptsize${\to}_I (4)$}
+\UnaryInfC{$\lnot \lnot A \to A$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$\bot$}
+\RightLabel{\scriptsize${\to}_I (3)$}
+\UnaryInfC{$\lnot A$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$\bot$}
+\RightLabel{\scriptsize${\bot}_E (5)$}
+\UnaryInfC{$A$}
+\RightLabel{\scriptsize${\to}_I (2)$}
+\UnaryInfC{$\lnot \lnot A \to A$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$\bot$}
+\RightLabel{\scriptsize${\to}_I (1)$}
+\UnaryInfC{$\lnot \lnot (\lnot \lnot A \to A)$}
+\RightLabel{\scriptsize$\lnot\lnot_E$}
+\UnaryInfC{$\lnot \lnot A \to A$}
+\end{prooftree}
 \section*{Refutation}
 
 Refutation in Kripke model:

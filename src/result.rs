@@ -4,7 +4,7 @@ use crate::nj::Proof;
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct SolverResultPair {
     // Classical logic result
-    pub cl: SolverResult<Void, KripkeRefutation>,
+    pub cl: SolverResult<Proof, KripkeRefutation>,
     // Intuitionistic logic result
     pub int: SolverResult<Proof, KripkeRefutation>,
 }
@@ -23,6 +23,13 @@ impl SolverResultPair {
         }
     }
 
+    pub fn update_cl(&mut self, other_cl: SolverResult<Proof, KripkeRefutation>) {
+        self.cl.update(other_cl);
+        if matches!(&self.cl, SolverResult::NotProvable(_)) {
+            self.int.update(SolverResult::NotProvable(None));
+        }
+    }
+
     pub fn reduce_duplicate_details(&mut self) {
         if matches!(&self.int, SolverResult::Provable(Some(_)))
             && matches!(&self.cl, SolverResult::Provable(Some(_)))
@@ -34,6 +41,11 @@ impl SolverResultPair {
         {
             self.int = SolverResult::NotProvable(None);
         }
+    }
+
+    pub fn classical_proof_needed(&self) -> bool {
+        !matches!(&self.int, SolverResult::Provable(Some(_)))
+            && matches!(&self.cl, SolverResult::Provable(None))
     }
 }
 

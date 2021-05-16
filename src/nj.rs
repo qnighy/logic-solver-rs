@@ -32,6 +32,8 @@ pub enum ProofKind {
     DisjIntro(Box<Proof>, usize, usize),
     /// `(match t1 { Ctor1 => u1, Ctor2 => u2, ..., CtorN => uN }): p`
     DisjElim(Box<Proof>, Vec<Proof>),
+    /// Double-negation elimination (classical logic)
+    DNegElim(Box<Proof>),
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -136,6 +138,11 @@ impl Proof {
                     branch.check_has_type_in(&mut ctx, &self.prop);
                 }
             }
+            ProofKind::DNegElim(ref sub) => {
+                let inner_type = sub.prop.as_neg().unwrap().as_neg().unwrap();
+                assert_eqtype!(inner_type, &self.prop);
+                sub.check_type_in(ctx);
+            }
         }
     }
 
@@ -160,6 +167,9 @@ impl Proof {
                 for branch in branches {
                     branch.reduce_all();
                 }
+            }
+            ProofKind::DNegElim(ref mut sub) => {
+                sub.reduce_all();
             }
         }
     }
@@ -234,6 +244,9 @@ impl Proof {
                     branch.subst(target.s(), repl, by + 1);
                 }
             }
+            ProofKind::DNegElim(ref mut sub) => {
+                sub.subst(target, repl, by);
+            }
         }
     }
 }
@@ -262,6 +275,11 @@ impl ProofKind {
     #[allow(non_snake_case)]
     pub fn DisjElimS(sub: Proof, branches: Vec<Proof>) -> Self {
         Self::DisjElim(Box::new(sub), branches)
+    }
+
+    #[allow(non_snake_case)]
+    pub fn DNegElimS(sub: Proof) -> Self {
+        Self::DNegElim(Box::new(sub))
     }
 }
 
@@ -295,6 +313,9 @@ impl Shift for Proof {
                     branch.shift(after.s(), by);
                 }
             }
+            ProofKind::DNegElim(ref mut sub) => {
+                sub.shift(after, by);
+            }
         }
     }
 }
@@ -327,6 +348,11 @@ pub mod ProofKindShorthands {
     #[allow(non_snake_case)]
     pub fn DisjElimS(sub: Proof, branches: Vec<Proof>) -> ProofKind {
         ProofKind::DisjElimS(sub, branches)
+    }
+
+    #[allow(non_snake_case)]
+    pub fn DNegElimS(sub: Proof) -> ProofKind {
+        ProofKind::DNegElimS(sub)
     }
 }
 

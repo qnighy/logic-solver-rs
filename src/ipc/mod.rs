@@ -6,4 +6,4 @@ pub mod refutation;
 pub mod solver;
 
 pub use refutation::{try_refute, try_refute_res};
-pub use solver::{solve, solve_res};
+pub use solver::{solve, solve_cpc, solve_res};

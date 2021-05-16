@@ -102,6 +102,31 @@ expression: "run(\"(A → B) ∨ (B → A)\")"
 
 $(A \to B) \vee (B \to A)$
 
+\section*{Proof}
+
+\begin{prooftree}
+\AxiomC{$[\lnot ((A \to B) \vee (B \to A))]_{1}$}
+\AxiomC{$[\lnot ((A \to B) \vee (B \to A))]_{1}$}
+\AxiomC{$[A]_{2}$}
+\RightLabel{\scriptsize${\to}_I (3)$}
+\UnaryInfC{$B \to A$}
+\RightLabel{\scriptsize${\vee}_{I 2}$}
+\UnaryInfC{$(A \to B) \vee (B \to A)$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$\bot$}
+\RightLabel{\scriptsize${\bot}_E (4)$}
+\UnaryInfC{$B$}
+\RightLabel{\scriptsize${\to}_I (2)$}
+\UnaryInfC{$A \to B$}
+\RightLabel{\scriptsize${\vee}_{I 1}$}
+\UnaryInfC{$(A \to B) \vee (B \to A)$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$\bot$}
+\RightLabel{\scriptsize${\to}_I (1)$}
+\UnaryInfC{$\lnot \lnot ((A \to B) \vee (B \to A))$}
+\RightLabel{\scriptsize$\lnot\lnot_E$}
+\UnaryInfC{$(A \to B) \vee (B \to A)$}
+\end{prooftree}
 \section*{Refutation}
 
 Refutation in Kripke model:

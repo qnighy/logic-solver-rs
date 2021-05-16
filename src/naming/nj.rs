@@ -77,6 +77,11 @@ fn promote_nj_rec(
                 subproofs: children,
             }
         }
+        ProofKind::DNegElim(ref sub) => VisibleProofKind::SubProof {
+            rule: RuleName::DNegElim,
+            introduces: None,
+            subproofs: vec![promote_nj_rec(sub, env, ctx, ctr)],
+        },
     };
     VisibleProof {
         kind,

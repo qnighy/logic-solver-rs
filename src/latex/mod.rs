@@ -8,6 +8,7 @@ use crate::naming::{promote_kripke, promote_nj};
 use crate::parsing::{ParseError, Prop as PropAst};
 use crate::prop::Env;
 use crate::result::{SolverResult, SolverResultPair};
+use crate::visible_proof::VisibleProof;
 
 mod kripke;
 mod nj;
@@ -51,7 +52,11 @@ pub fn success_latex(prop: &PropAst, res: &SolverResultPair, env: &Env) -> Strin
             }
         })),
         SolverResult::Unknown => SolverResult::Unknown,
-        SolverResult::Provable(_) => SolverResult::Provable(None),
+        SolverResult::Provable(pf) => SolverResult::Provable(pf.as_ref().map(|pf| {
+            let pf = promote_nj(pf, env);
+
+            proof_fragments(&pf)
+        })),
     };
     let int_result = match &res.int {
         SolverResult::NotProvable(rft) => SolverResult::NotProvable(rft.as_ref().map(|rft| {
@@ -65,21 +70,7 @@ pub fn success_latex(prop: &PropAst, res: &SolverResultPair, env: &Env) -> Strin
         SolverResult::Provable(pf) => SolverResult::Provable(pf.as_ref().map(|pf| {
             let pf = promote_nj(pf, env);
 
-            split_proof(&pf)
-                .into_iter()
-                .enumerate()
-                .map(|(i, pf)| {
-                    let name = if i == 0 {
-                        "Main proof".to_owned()
-                    } else {
-                        format!("Subproof {}", i)
-                    };
-                    ProofFragment {
-                        name,
-                        source: nj_latex(&pf),
-                    }
-                })
-                .collect::<Vec<_>>()
+            proof_fragments(&pf)
         })),
     };
     SuccessTemplate {
@@ -89,6 +80,24 @@ pub fn success_latex(prop: &PropAst, res: &SolverResultPair, env: &Env) -> Strin
     }
     .render()
     .unwrap()
+}
+
+fn proof_fragments(pf: &VisibleProof) -> Vec<ProofFragment> {
+    split_proof(&pf)
+        .into_iter()
+        .enumerate()
+        .map(|(i, pf)| {
+            let name = if i == 0 {
+                "Main proof".to_owned()
+            } else {
+                format!("Subproof {}", i)
+            };
+            ProofFragment {
+                name,
+                source: nj_latex(&pf),
+            }
+        })
+        .collect::<Vec<_>>()
 }
 
 #[derive(Template)]

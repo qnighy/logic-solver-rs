@@ -49,6 +49,35 @@
 
 $<= prop %>$
 
+<% match cl_result %>
+<%- when SolverResult::Provable with (pf) %>
+<%- match pf %>
+<%- when Some with (pf) -%>
+\section*{Proof}
+<% for fragment in pf %>
+<%- if pf.len() > 1 %>
+\subsection*{<= fragment.name %>}
+<%- endif %>
+\begin{prooftree}
+<= fragment.source -%>
+\end{prooftree}
+<% endfor %>
+
+<%- when None %>
+<%- endmatch %>
+
+<%- when SolverResult::NotProvable with (rft) %>
+<%- match rft %>
+<%- when Some with (rft) -%>
+\section*{Refutation}
+
+Refutation in boolean model:
+
+<= rft.assignment %>
+<%- when None -%>
+<%- endmatch -%>
+<%- when SolverResult::Unknown -%>
+<%- endmatch -%>
 <% match int_result %>
 <%- when SolverResult::Provable with (pf) %>
 <%- match pf %>
@@ -74,35 +103,6 @@ $<= prop %>$
 Refutation in Kripke model:
 
 <= rft.frame %>
-<= rft.assignment %>
-<%- when None -%>
-<%- endmatch -%>
-<%- when SolverResult::Unknown -%>
-<%- endmatch -%>
-<% match cl_result %>
-<%- when SolverResult::Provable with (pf) %>
-<%- match pf %>
-<%- when Some with (pf) -%>
-\section*{Proof}
-<% for fragment in pf %>
-<%- if pf.len() > 1 %>
-\subsection*{<= fragment.name %>}
-<%- endif %>
-\begin{prooftree}
-<= fragment.source -%>
-\end{prooftree}
-<% endfor %>
-
-<%- when None %>
-<%- endmatch %>
-
-<%- when SolverResult::NotProvable with (rft) %>
-<%- match rft %>
-<%- when Some with (rft) -%>
-\section*{Refutation}
-
-Refutation in boolean model:
-
 <= rft.assignment %>
 <%- when None -%>
 <%- endmatch -%>

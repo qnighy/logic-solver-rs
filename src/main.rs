@@ -2,12 +2,12 @@ use std::io::{self, Read, Write};
 use structopt::StructOpt;
 use thiserror::Error;
 
-use crate::ipc::{solve_res, try_refute_res};
+use crate::ipc::{solve_cpc, solve_res, try_refute_res};
 use crate::latex::{parse_error_latex, success_latex};
 use crate::naming::lower_prop;
 use crate::parsing::{parse_prop, ParseError};
 use crate::prop::{Env, IdGen};
-use crate::result::SolverResultPair;
+use crate::result::{SolverResult, SolverResultPair};
 
 pub mod debruijn;
 pub mod ipc;
@@ -85,6 +85,14 @@ fn main2() -> Result<(), LogicSolverError> {
         res.update_int(try_refute_res(&prop));
     }
     if opt.latex {
+        eprintln!("res = {:?}", res);
+        if res.classical_proof_needed() {
+            eprintln!("bar");
+            if let Some(pf) = solve_cpc(&prop) {
+                eprintln!("baz");
+                res.update_cl(SolverResult::Provable(Some(pf)));
+            }
+        }
         res.reduce_duplicate_details();
         let latex_src = success_latex(&ast, &res, &env);
         let stdout = io::stdout();

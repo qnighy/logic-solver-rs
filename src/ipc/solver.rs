@@ -3,7 +3,7 @@ use crate::prop::Prop;
 use crate::ipc::icnf::VarGen;
 use crate::ipc::icnf_decomp::Decomposition;
 use crate::ipc::icnf_solver::solve_icnf;
-use crate::nj::Proof;
+use crate::nj::{Proof, ProofKind};
 use crate::result::SolverResult;
 
 pub fn solve_res<R>(prop: &Prop) -> SolverResult<Proof, R> {
@@ -27,6 +27,15 @@ pub fn solve(prop: &Prop) -> Option<Proof> {
         proof.check_has_type(prop);
     }
     Some(proof)
+}
+
+pub fn solve_cpc(prop: &Prop) -> Option<Proof> {
+    let prop_dn = Prop::NegS(Prop::NegS(prop.clone()));
+    let proof_dn = solve(&prop_dn)?;
+    Some(Proof {
+        prop: prop.clone(),
+        kind: ProofKind::DNegElimS(proof_dn),
+    })
 }
 
 #[cfg(test)]
