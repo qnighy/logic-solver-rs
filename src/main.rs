@@ -85,11 +85,8 @@ fn main2() -> Result<(), LogicSolverError> {
         res.update_int(try_refute_res(&prop));
     }
     if opt.latex {
-        eprintln!("res = {:?}", res);
         if res.classical_proof_needed() {
-            eprintln!("bar");
             if let Some(pf) = solve_cpc(&prop) {
-                eprintln!("baz");
                 res.update_cl(SolverResult::Provable(Some(pf)));
             }
         }
