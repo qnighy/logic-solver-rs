@@ -1,5 +1,7 @@
+use std::borrow::Cow;
+
 use crate::debruijn::{DbCtx, Idx, Shift};
-use crate::prop::{ConjType, ImplType, Prop};
+use crate::prop::{ConjType, ImplType, Prop, BOTTOM};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Proof {
@@ -72,26 +74,50 @@ impl Proof {
             ProofKind::Var(idx) => {
                 assert_eqtype!(ctx[idx], self.prop);
             }
-            ProofKind::Abs(ref body, _) => {
-                let (abstype, body_type) = self.prop.as_impl().unwrap();
+            ProofKind::Abs(ref body, it) => {
+                let (abstype, body_type) = match it {
+                    ImplType::Normal => self.prop.as_impl().unwrap(),
+                    ImplType::Neg => (self.prop.as_neg().unwrap(), &BOTTOM),
+                };
                 let mut ctx = ctx.push(abstype.clone());
                 body.check_has_type_in(&mut ctx, body_type);
             }
-            ProofKind::App(ref lhs, ref rhs, _) => {
-                let (ltl, ltr) = lhs.prop.as_impl().unwrap();
+            ProofKind::App(ref lhs, ref rhs, it) => {
+                let (ltl, ltr) = match it {
+                    ImplType::Normal => lhs.prop.as_impl().unwrap(),
+                    ImplType::Neg => (lhs.prop.as_neg().unwrap(), &BOTTOM),
+                };
                 assert_eqtype!(*ltr, self.prop);
                 lhs.check_type_in(ctx);
                 rhs.check_has_type_in(ctx, ltl);
             }
-            ProofKind::ConjIntro(ref children, _) => {
-                let child_types = self.prop.as_conj().unwrap();
+            ProofKind::ConjIntro(ref children, ct) => {
+                let child_types = match ct {
+                    ConjType::Normal => Cow::Borrowed(self.prop.as_conj().unwrap()),
+                    ConjType::Equiv => {
+                        let (lhs, rhs) = self.prop.as_equiv().unwrap();
+                        Cow::Owned(vec![
+                            Prop::ImplS(lhs.clone(), rhs.clone()),
+                            Prop::ImplS(rhs.clone(), lhs.clone()),
+                        ])
+                    }
+                };
                 assert_eq!(children.len(), child_types.len());
-                for (child, child_type) in children.iter().zip(child_types) {
+                for (child, child_type) in children.iter().zip(&child_types[..]) {
                     child.check_has_type_in(ctx, child_type);
                 }
             }
-            ProofKind::ConjElim(ref sub, i, n, _) => {
-                let child_types = sub.prop.as_conj().unwrap();
+            ProofKind::ConjElim(ref sub, i, n, ct) => {
+                let child_types = match ct {
+                    ConjType::Normal => Cow::Borrowed(sub.prop.as_conj().unwrap()),
+                    ConjType::Equiv => {
+                        let (lhs, rhs) = sub.prop.as_equiv().unwrap();
+                        Cow::Owned(vec![
+                            Prop::ImplS(lhs.clone(), rhs.clone()),
+                            Prop::ImplS(rhs.clone(), lhs.clone()),
+                        ])
+                    }
+                };
                 assert_eq!(child_types.len(), n);
                 assert_eqtype!(child_types[i], self.prop);
                 sub.check_type_in(ctx);
@@ -107,7 +133,7 @@ impl Proof {
                 assert_eq!(child_types.len(), branches.len());
                 for (branch, child_type) in branches.iter().zip(child_types) {
                     let mut ctx = ctx.push(child_type.clone());
-                    branch.check_has_type_in(&mut ctx, child_type);
+                    branch.check_has_type_in(&mut ctx, &self.prop);
                 }
             }
         }
@@ -181,7 +207,7 @@ impl Proof {
                 if *idx > target {
                     idx.0 -= 1
                 } else if *idx == target {
-                    *self = repl.shifted(target.s(), by);
+                    *self = repl.shifted(Idx(0), by);
                 }
             }
             ProofKind::Abs(ref mut body, _) => {
@@ -205,7 +231,7 @@ impl Proof {
             ProofKind::DisjElim(ref mut sub, ref mut branches) => {
                 sub.subst(target, repl, by);
                 for branch in branches {
-                    branch.subst(target, repl, by + 1);
+                    branch.subst(target.s(), repl, by + 1);
                 }
             }
         }
@@ -340,6 +366,517 @@ mod tests {
         let pf = Proof {
             prop: Atom(id1),
             kind: Var(Idx(0)),
+        };
+        pf.check_type();
+    }
+
+    #[test]
+    fn test_check_type3() {
+        use ProofKindShorthands::*;
+        use PropShorthands::*;
+
+        let mut idgen = IdGen::new();
+        let id1 = idgen.fresh();
+        let pf = Proof {
+            prop: ImplS(Disj(vec![Atom(id1), Disj(vec![])]), Atom(id1)),
+            kind: AppS(
+                Proof {
+                    prop: ImplS(
+                        ImplS(Disj(vec![Atom(id1), Disj(vec![])]), Atom(id1)),
+                        ImplS(Disj(vec![Atom(id1), Disj(vec![])]), Atom(id1)),
+                    ),
+                    kind: AbsS(
+                        Proof {
+                            prop: ImplS(Disj(vec![Atom(id1), Disj(vec![])]), Atom(id1)),
+                            kind: Var(Idx(0)),
+                        },
+                        ImplType::Normal,
+                    ),
+                },
+                Proof {
+                    prop: ImplS(Disj(vec![Atom(id1), Disj(vec![])]), Atom(id1)),
+                    kind: AbsS(
+                        Proof {
+                            prop: Atom(id1),
+                            kind: DisjElimS(
+                                Proof {
+                                    prop: Disj(vec![Atom(id1), Disj(vec![])]),
+                                    kind: Var(Idx(0)),
+                                },
+                                vec![
+                                    Proof {
+                                        prop: Atom(id1),
+                                        kind: Var(Idx(0)),
+                                    },
+                                    Proof {
+                                        prop: Atom(id1),
+                                        kind: DisjElimS(
+                                            Proof {
+                                                prop: Disj(vec![]),
+                                                kind: Var(Idx(0)),
+                                            },
+                                            vec![],
+                                        ),
+                                    },
+                                ],
+                            ),
+                        },
+                        ImplType::Normal,
+                    ),
+                },
+                ImplType::Normal,
+            ),
+        };
+        pf.check_type();
+    }
+
+    #[test]
+    fn test_check_type4() {
+        use ProofKindShorthands::*;
+        use PropShorthands::*;
+
+        let mut idgen = IdGen::new();
+        let id1 = idgen.fresh();
+        let pf = Proof {
+            prop: NegS(Conj(vec![
+                ImplS(Atom(id1), NegS(Atom(id1))),
+                ImplS(NegS(Atom(id1)), Atom(id1)),
+            ])),
+            kind: AbsS(
+                Proof {
+                    prop: Disj(vec![]),
+                    kind: AppS(
+                        Proof {
+                            prop: NegS(Atom(id1)),
+                            kind: AppS(
+                                Proof {
+                                    prop: ImplS(Atom(id1), NegS(Atom(id1))),
+                                    kind: ConjElimS(
+                                        Proof {
+                                            prop: Conj(vec![
+                                                ImplS(Atom(id1), NegS(Atom(id1))),
+                                                ImplS(NegS(Atom(id1)), Atom(id1)),
+                                            ]),
+                                            kind: Var(Idx(0)),
+                                        },
+                                        0,
+                                        2,
+                                        ConjType::Normal,
+                                    ),
+                                },
+                                Proof {
+                                    prop: Atom(id1),
+                                    kind: AppS(
+                                        Proof {
+                                            prop: ImplS(NegS(Atom(id1)), Atom(id1)),
+                                            kind: ConjElimS(
+                                                Proof {
+                                                    prop: Conj(vec![
+                                                        ImplS(Atom(id1), NegS(Atom(id1))),
+                                                        ImplS(NegS(Atom(id1)), Atom(id1)),
+                                                    ]),
+                                                    kind: Var(Idx(0)),
+                                                },
+                                                1,
+                                                2,
+                                                ConjType::Normal,
+                                            ),
+                                        },
+                                        Proof {
+                                            prop: NegS(Atom(id1)),
+                                            kind: AbsS(
+                                                Proof {
+                                                    prop: Disj(vec![]),
+                                                    kind: AppS(
+                                                        Proof {
+                                                            prop: NegS(Atom(id1)),
+                                                            kind: AppS(
+                                                                Proof {
+                                                                    prop: ImplS(
+                                                                        Atom(id1),
+                                                                        NegS(Atom(id1)),
+                                                                    ),
+                                                                    kind: ConjElimS(
+                                                                        Proof {
+                                                                            prop: Conj(vec![
+                                                                                ImplS(
+                                                                                    Atom(id1),
+                                                                                    NegS(Atom(id1)),
+                                                                                ),
+                                                                                ImplS(
+                                                                                    NegS(Atom(id1)),
+                                                                                    Atom(id1),
+                                                                                ),
+                                                                            ]),
+                                                                            kind: Var(Idx(1)),
+                                                                        },
+                                                                        0,
+                                                                        2,
+                                                                        ConjType::Normal,
+                                                                    ),
+                                                                },
+                                                                Proof {
+                                                                    prop: Atom(id1),
+                                                                    kind: Var(Idx(0)),
+                                                                },
+                                                                ImplType::Normal,
+                                                            ),
+                                                        },
+                                                        Proof {
+                                                            prop: Atom(id1),
+                                                            kind: Var(Idx(0)),
+                                                        },
+                                                        ImplType::Neg,
+                                                    ),
+                                                },
+                                                ImplType::Neg,
+                                            ),
+                                        },
+                                        ImplType::Normal,
+                                    ),
+                                },
+                                ImplType::Normal,
+                            ),
+                        },
+                        Proof {
+                            prop: Atom(id1),
+                            kind: AppS(
+                                Proof {
+                                    prop: ImplS(NegS(Atom(id1)), Atom(id1)),
+                                    kind: ConjElimS(
+                                        Proof {
+                                            prop: Conj(vec![
+                                                ImplS(Atom(id1), NegS(Atom(id1))),
+                                                ImplS(NegS(Atom(id1)), Atom(id1)),
+                                            ]),
+                                            kind: Var(Idx(0)),
+                                        },
+                                        1,
+                                        2,
+                                        ConjType::Normal,
+                                    ),
+                                },
+                                Proof {
+                                    prop: NegS(Atom(id1)),
+                                    kind: AbsS(
+                                        Proof {
+                                            prop: Disj(vec![]),
+                                            kind: AppS(
+                                                Proof {
+                                                    prop: NegS(Atom(id1)),
+                                                    kind: AppS(
+                                                        Proof {
+                                                            prop: ImplS(Atom(id1), NegS(Atom(id1))),
+                                                            kind: ConjElimS(
+                                                                Proof {
+                                                                    prop: Conj(vec![
+                                                                        ImplS(
+                                                                            Atom(id1),
+                                                                            NegS(Atom(id1)),
+                                                                        ),
+                                                                        ImplS(
+                                                                            NegS(Atom(id1)),
+                                                                            Atom(id1),
+                                                                        ),
+                                                                    ]),
+                                                                    kind: Var(Idx(1)),
+                                                                },
+                                                                0,
+                                                                2,
+                                                                ConjType::Normal,
+                                                            ),
+                                                        },
+                                                        Proof {
+                                                            prop: Atom(id1),
+                                                            kind: Var(Idx(0)),
+                                                        },
+                                                        ImplType::Normal,
+                                                    ),
+                                                },
+                                                Proof {
+                                                    prop: Atom(id1),
+                                                    kind: Var(Idx(0)),
+                                                },
+                                                ImplType::Neg,
+                                            ),
+                                        },
+                                        ImplType::Neg,
+                                    ),
+                                },
+                                ImplType::Normal,
+                            ),
+                        },
+                        ImplType::Neg,
+                    ),
+                },
+                ImplType::Neg,
+            ),
+        };
+        pf.check_type();
+    }
+
+    #[test]
+    fn test_check_type5() {
+        use ProofKindShorthands::*;
+        use PropShorthands::*;
+
+        let mut idgen = IdGen::new();
+        let id1 = idgen.fresh();
+        let pf = Proof {
+            prop: NegS(EquivS(Atom(id1), NegS(Atom(id1)))),
+            kind: AbsS(
+                Proof {
+                    prop: Disj(vec![]),
+                    kind: AppS(
+                        Proof {
+                            prop: NegS(Atom(id1)),
+                            kind: AppS(
+                                Proof {
+                                    prop: ImplS(Atom(id1), NegS(Atom(id1))),
+                                    kind: ConjElimS(
+                                        Proof {
+                                            prop: EquivS(Atom(id1), NegS(Atom(id1))),
+                                            kind: Var(Idx(0)),
+                                        },
+                                        0,
+                                        2,
+                                        ConjType::Equiv,
+                                    ),
+                                },
+                                Proof {
+                                    prop: Atom(id1),
+                                    kind: AppS(
+                                        Proof {
+                                            prop: ImplS(NegS(Atom(id1)), Atom(id1)),
+                                            kind: ConjElimS(
+                                                Proof {
+                                                    prop: EquivS(Atom(id1), NegS(Atom(id1))),
+                                                    kind: Var(Idx(0)),
+                                                },
+                                                1,
+                                                2,
+                                                ConjType::Equiv,
+                                            ),
+                                        },
+                                        Proof {
+                                            prop: NegS(Atom(id1)),
+                                            kind: AbsS(
+                                                Proof {
+                                                    prop: Disj(vec![]),
+                                                    kind: AppS(
+                                                        Proof {
+                                                            prop: NegS(Atom(id1)),
+                                                            kind: AppS(
+                                                                Proof {
+                                                                    prop: ImplS(
+                                                                        Atom(id1),
+                                                                        NegS(Atom(id1)),
+                                                                    ),
+                                                                    kind: ConjElimS(
+                                                                        Proof {
+                                                                            prop: EquivS(
+                                                                                Atom(id1),
+                                                                                NegS(Atom(id1)),
+                                                                            ),
+                                                                            kind: Var(Idx(1)),
+                                                                        },
+                                                                        0,
+                                                                        2,
+                                                                        ConjType::Equiv,
+                                                                    ),
+                                                                },
+                                                                Proof {
+                                                                    prop: Atom(id1),
+                                                                    kind: Var(Idx(0)),
+                                                                },
+                                                                ImplType::Normal,
+                                                            ),
+                                                        },
+                                                        Proof {
+                                                            prop: Atom(id1),
+                                                            kind: Var(Idx(0)),
+                                                        },
+                                                        ImplType::Neg,
+                                                    ),
+                                                },
+                                                ImplType::Neg,
+                                            ),
+                                        },
+                                        ImplType::Normal,
+                                    ),
+                                },
+                                ImplType::Normal,
+                            ),
+                        },
+                        Proof {
+                            prop: Atom(id1),
+                            kind: AppS(
+                                Proof {
+                                    prop: ImplS(NegS(Atom(id1)), Atom(id1)),
+                                    kind: ConjElimS(
+                                        Proof {
+                                            prop: EquivS(Atom(id1), NegS(Atom(id1))),
+                                            kind: Var(Idx(0)),
+                                        },
+                                        1,
+                                        2,
+                                        ConjType::Equiv,
+                                    ),
+                                },
+                                Proof {
+                                    prop: NegS(Atom(id1)),
+                                    kind: AbsS(
+                                        Proof {
+                                            prop: Disj(vec![]),
+                                            kind: AppS(
+                                                Proof {
+                                                    prop: NegS(Atom(id1)),
+                                                    kind: AppS(
+                                                        Proof {
+                                                            prop: ImplS(Atom(id1), NegS(Atom(id1))),
+                                                            kind: ConjElimS(
+                                                                Proof {
+                                                                    prop: EquivS(
+                                                                        Atom(id1),
+                                                                        NegS(Atom(id1)),
+                                                                    ),
+                                                                    kind: Var(Idx(1)),
+                                                                },
+                                                                0,
+                                                                2,
+                                                                ConjType::Equiv,
+                                                            ),
+                                                        },
+                                                        Proof {
+                                                            prop: Atom(id1),
+                                                            kind: Var(Idx(0)),
+                                                        },
+                                                        ImplType::Normal,
+                                                    ),
+                                                },
+                                                Proof {
+                                                    prop: Atom(id1),
+                                                    kind: Var(Idx(0)),
+                                                },
+                                                ImplType::Neg,
+                                            ),
+                                        },
+                                        ImplType::Neg,
+                                    ),
+                                },
+                                ImplType::Normal,
+                            ),
+                        },
+                        ImplType::Neg,
+                    ),
+                },
+                ImplType::Neg,
+            ),
+        };
+        pf.check_type();
+    }
+
+    #[test]
+    fn test_check_type6() {
+        use ProofKindShorthands::*;
+        use PropShorthands::*;
+
+        let mut idgen = IdGen::new();
+        let id1 = idgen.fresh();
+        let id2 = idgen.fresh();
+        let pf = Proof {
+            prop: ImplS(
+                ImplS(
+                    ImplS(ImplS(ImplS(Atom(id1), Atom(id2)), Atom(id1)), Atom(id1)),
+                    Disj(vec![]),
+                ),
+                Disj(vec![]),
+            ),
+            kind: AbsS(
+                Proof {
+                    prop: Disj(vec![]),
+                    kind: AppS(
+                        Proof {
+                            prop: ImplS(
+                                ImplS(ImplS(ImplS(Atom(id1), Atom(id2)), Atom(id1)), Atom(id1)),
+                                Disj(vec![]),
+                            ),
+                            kind: Var(Idx(0)),
+                        },
+                        Proof {
+                            prop: ImplS(ImplS(ImplS(Atom(id1), Atom(id2)), Atom(id1)), Atom(id1)),
+                            kind: AbsS(
+                                Proof {
+                                    prop: Atom(id1),
+                                    kind: AppS(
+                                        Proof {
+                                            prop: ImplS(ImplS(Atom(id1), Atom(id2)), Atom(id1)),
+                                            kind: Var(Idx(0)),
+                                        },
+                                        Proof {
+                                            prop: ImplS(Atom(id1), Atom(id2)),
+                                            kind: AbsS(
+                                                Proof {
+                                                    prop: Atom(id2),
+                                                    kind: DisjElimS(
+                                                        Proof {
+                                                            prop: Disj(vec![]),
+                                                            kind: AppS(
+                                                                Proof {
+                                                                    prop: ImplS(
+                                                                        ImplS(
+                                                                            ImplS(
+                                                                                ImplS(
+                                                                                    Atom(id1),
+                                                                                    Atom(id2),
+                                                                                ),
+                                                                                Atom(id1),
+                                                                            ),
+                                                                            Atom(id1),
+                                                                        ),
+                                                                        Disj(vec![]),
+                                                                    ),
+                                                                    kind: Var(Idx(2)), // !!
+                                                                },
+                                                                Proof {
+                                                                    prop: ImplS(
+                                                                        ImplS(
+                                                                            ImplS(
+                                                                                Atom(id1),
+                                                                                Atom(id2),
+                                                                            ),
+                                                                            Atom(id1),
+                                                                        ),
+                                                                        Atom(id1),
+                                                                    ),
+                                                                    kind: AbsS(
+                                                                        Proof {
+                                                                            prop: Atom(id1),
+                                                                            kind: Var(Idx(1)),
+                                                                        },
+                                                                        ImplType::Normal,
+                                                                    ),
+                                                                },
+                                                                ImplType::Normal,
+                                                            ),
+                                                        },
+                                                        vec![],
+                                                    ),
+                                                },
+                                                ImplType::Normal,
+                                            ),
+                                        },
+                                        ImplType::Normal,
+                                    ),
+                                },
+                                ImplType::Normal,
+                            ),
+                        },
+                        ImplType::Normal,
+                    ),
+                },
+                ImplType::Normal,
+            ),
         };
         pf.check_type();
     }
@@ -514,5 +1051,368 @@ mod tests {
                 )
             }
         );
+    }
+
+    #[test]
+    fn test_reduce_all3() {
+        use ProofKindShorthands::*;
+        use PropShorthands::*;
+
+        let mut idgen = IdGen::new();
+        let id1 = idgen.fresh();
+        let id2 = idgen.fresh();
+        let mut pf = Proof {
+            prop: ImplS(
+                ImplS(
+                    ImplS(ImplS(ImplS(Atom(id1), Atom(id2)), Atom(id1)), Atom(id1)),
+                    Disj(vec![]),
+                ),
+                Disj(vec![]),
+            ),
+            kind: AppS(
+                Proof {
+                    prop: ImplS(
+                        ImplS(
+                            ImplS(
+                                ImplS(ImplS(ImplS(Atom(id1), Atom(id2)), Atom(id1)), Atom(id1)),
+                                Disj(vec![]),
+                            ),
+                            Disj(vec![]),
+                        ),
+                        ImplS(
+                            ImplS(
+                                ImplS(ImplS(ImplS(Atom(id1), Atom(id2)), Atom(id1)), Atom(id1)),
+                                Disj(vec![]),
+                            ),
+                            Disj(vec![]),
+                        ),
+                    ),
+                    kind: AbsS(
+                        Proof {
+                            prop: ImplS(
+                                ImplS(
+                                    ImplS(ImplS(ImplS(Atom(id1), Atom(id2)), Atom(id1)), Atom(id1)),
+                                    Disj(vec![]),
+                                ),
+                                Disj(vec![]),
+                            ),
+                            kind: Var(Idx(0)),
+                        },
+                        ImplType::Normal,
+                    ),
+                },
+                Proof {
+                    prop: ImplS(
+                        ImplS(
+                            ImplS(ImplS(ImplS(Atom(id1), Atom(id2)), Atom(id1)), Atom(id1)),
+                            Disj(vec![]),
+                        ),
+                        Disj(vec![]),
+                    ),
+                    kind: AbsS(
+                        Proof {
+                            prop: Disj(vec![]),
+                            kind: AppS(
+                                Proof {
+                                    prop: ImplS(ImplS(Atom(id1), Atom(id2)), Disj(vec![])),
+                                    kind: AbsS(
+                                        Proof {
+                                            prop: Disj(vec![]),
+                                            kind: AppS(
+                                                Proof {
+                                                    prop: ImplS(
+                                                        ImplS(
+                                                            ImplS(
+                                                                ImplS(Atom(id1), Atom(id2)),
+                                                                Atom(id1),
+                                                            ),
+                                                            Atom(id1),
+                                                        ),
+                                                        Disj(vec![]),
+                                                    ),
+                                                    kind: AbsS(
+                                                        Proof {
+                                                            prop: Disj(vec![]),
+                                                            kind: AppS(
+                                                                Proof {
+                                                                    prop: ImplS(
+                                                                        ImplS(
+                                                                            ImplS(
+                                                                                ImplS(
+                                                                                    Atom(id1),
+                                                                                    Atom(id2),
+                                                                                ),
+                                                                                Atom(id1),
+                                                                            ),
+                                                                            Atom(id1),
+                                                                        ),
+                                                                        Disj(vec![]),
+                                                                    ),
+                                                                    kind: Var(Idx(2)),
+                                                                },
+                                                                Proof {
+                                                                    prop: ImplS(
+                                                                        ImplS(
+                                                                            ImplS(
+                                                                                Atom(id1),
+                                                                                Atom(id2),
+                                                                            ),
+                                                                            Atom(id1),
+                                                                        ),
+                                                                        Atom(id1),
+                                                                    ),
+                                                                    kind: Var(Idx(0)),
+                                                                },
+                                                                ImplType::Normal,
+                                                            ),
+                                                        },
+                                                        ImplType::Normal,
+                                                    ),
+                                                },
+                                                Proof {
+                                                    prop: ImplS(
+                                                        ImplS(
+                                                            ImplS(Atom(id1), Atom(id2)),
+                                                            Atom(id1),
+                                                        ),
+                                                        Atom(id1),
+                                                    ),
+                                                    kind: AbsS(
+                                                        Proof {
+                                                            prop: Atom(id1),
+                                                            kind: AppS(
+                                                                Proof {
+                                                                    prop: ImplS(
+                                                                        ImplS(Atom(id1), Atom(id2)),
+                                                                        Atom(id1),
+                                                                    ),
+                                                                    kind: Var(Idx(0)),
+                                                                },
+                                                                Proof {
+                                                                    prop: ImplS(
+                                                                        Atom(id1),
+                                                                        Atom(id2),
+                                                                    ),
+                                                                    kind: Var(Idx(1)),
+                                                                },
+                                                                ImplType::Normal,
+                                                            ),
+                                                        },
+                                                        ImplType::Normal,
+                                                    ),
+                                                },
+                                                ImplType::Normal,
+                                            ),
+                                        },
+                                        ImplType::Normal,
+                                    ),
+                                },
+                                Proof {
+                                    prop: ImplS(Atom(id1), Atom(id2)),
+                                    kind: AbsS(
+                                        Proof {
+                                            prop: Atom(id2),
+                                            kind: DisjElimS(
+                                                Proof {
+                                                    prop: Disj(vec![]),
+                                                    kind: AppS(
+                                                        Proof {
+                                                            prop: ImplS(
+                                                                ImplS(
+                                                                    ImplS(
+                                                                        ImplS(Atom(id1), Atom(id2)),
+                                                                        Atom(id1),
+                                                                    ),
+                                                                    Atom(id1),
+                                                                ),
+                                                                Disj(vec![]),
+                                                            ),
+                                                            kind: Var(Idx(1)),
+                                                        },
+                                                        Proof {
+                                                            prop: ImplS(
+                                                                ImplS(
+                                                                    ImplS(Atom(id1), Atom(id2)),
+                                                                    Atom(id1),
+                                                                ),
+                                                                Atom(id1),
+                                                            ),
+                                                            kind: AppS(
+                                                                Proof {
+                                                                    prop: ImplS(
+                                                                        ImplS(
+                                                                            ImplS(
+                                                                                ImplS(
+                                                                                    Atom(id1),
+                                                                                    Atom(id2),
+                                                                                ),
+                                                                                Atom(id1),
+                                                                            ),
+                                                                            Atom(id1),
+                                                                        ),
+                                                                        ImplS(
+                                                                            ImplS(
+                                                                                ImplS(
+                                                                                    Atom(id1),
+                                                                                    Atom(id2),
+                                                                                ),
+                                                                                Atom(id1),
+                                                                            ),
+                                                                            Atom(id1),
+                                                                        ),
+                                                                    ),
+                                                                    kind: AbsS(
+                                                                        Proof {
+                                                                            prop: ImplS(
+                                                                                ImplS(
+                                                                                    ImplS(
+                                                                                        Atom(id1),
+                                                                                        Atom(id2),
+                                                                                    ),
+                                                                                    Atom(id1),
+                                                                                ),
+                                                                                Atom(id1),
+                                                                            ),
+                                                                            kind: Var(Idx(0)),
+                                                                        },
+                                                                        ImplType::Normal,
+                                                                    ),
+                                                                },
+                                                                Proof {
+                                                                    prop: ImplS(
+                                                                        ImplS(
+                                                                            ImplS(
+                                                                                Atom(id1),
+                                                                                Atom(id2),
+                                                                            ),
+                                                                            Atom(id1),
+                                                                        ),
+                                                                        Atom(id1),
+                                                                    ),
+                                                                    kind: AbsS(
+                                                                        Proof {
+                                                                            prop: Atom(id1),
+                                                                            kind: Var(Idx(1)),
+                                                                        },
+                                                                        ImplType::Normal,
+                                                                    ),
+                                                                },
+                                                                ImplType::Normal,
+                                                            ),
+                                                        },
+                                                        ImplType::Normal,
+                                                    ),
+                                                },
+                                                vec![],
+                                            ),
+                                        },
+                                        ImplType::Normal,
+                                    ),
+                                },
+                                ImplType::Normal,
+                            ),
+                        },
+                        ImplType::Normal,
+                    ),
+                },
+                ImplType::Normal,
+            ),
+        };
+        pf.reduce_all();
+        let expect_pf = Proof {
+            prop: ImplS(
+                ImplS(
+                    ImplS(ImplS(ImplS(Atom(id1), Atom(id2)), Atom(id1)), Atom(id1)),
+                    Disj(vec![]),
+                ),
+                Disj(vec![]),
+            ),
+            kind: AbsS(
+                Proof {
+                    prop: Disj(vec![]),
+                    kind: AppS(
+                        Proof {
+                            prop: ImplS(
+                                ImplS(ImplS(ImplS(Atom(id1), Atom(id2)), Atom(id1)), Atom(id1)),
+                                Disj(vec![]),
+                            ),
+                            kind: Var(Idx(0)),
+                        },
+                        Proof {
+                            prop: ImplS(ImplS(ImplS(Atom(id1), Atom(id2)), Atom(id1)), Atom(id1)),
+                            kind: AbsS(
+                                Proof {
+                                    prop: Atom(id1),
+                                    kind: AppS(
+                                        Proof {
+                                            prop: ImplS(ImplS(Atom(id1), Atom(id2)), Atom(id1)),
+                                            kind: Var(Idx(0)),
+                                        },
+                                        Proof {
+                                            prop: ImplS(Atom(id1), Atom(id2)),
+                                            kind: AbsS(
+                                                Proof {
+                                                    prop: Atom(id2),
+                                                    kind: DisjElimS(
+                                                        Proof {
+                                                            prop: Disj(vec![]),
+                                                            kind: AppS(
+                                                                Proof {
+                                                                    prop: ImplS(
+                                                                        ImplS(
+                                                                            ImplS(
+                                                                                ImplS(
+                                                                                    Atom(id1),
+                                                                                    Atom(id2),
+                                                                                ),
+                                                                                Atom(id1),
+                                                                            ),
+                                                                            Atom(id1),
+                                                                        ),
+                                                                        Disj(vec![]),
+                                                                    ),
+                                                                    kind: Var(Idx(2)), // !!
+                                                                },
+                                                                Proof {
+                                                                    prop: ImplS(
+                                                                        ImplS(
+                                                                            ImplS(
+                                                                                Atom(id1),
+                                                                                Atom(id2),
+                                                                            ),
+                                                                            Atom(id1),
+                                                                        ),
+                                                                        Atom(id1),
+                                                                    ),
+                                                                    kind: AbsS(
+                                                                        Proof {
+                                                                            prop: Atom(id1),
+                                                                            kind: Var(Idx(1)),
+                                                                        },
+                                                                        ImplType::Normal,
+                                                                    ),
+                                                                },
+                                                                ImplType::Normal,
+                                                            ),
+                                                        },
+                                                        vec![],
+                                                    ),
+                                                },
+                                                ImplType::Normal,
+                                            ),
+                                        },
+                                        ImplType::Normal,
+                                    ),
+                                },
+                                ImplType::Normal,
+                            ),
+                        },
+                        ImplType::Normal,
+                    ),
+                },
+                ImplType::Normal,
+            ),
+        };
+        assert_eq!(pf, expect_pf);
     }
 }

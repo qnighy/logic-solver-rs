@@ -227,7 +227,7 @@ impl PropMap {
             ShallowProp::Conj(ref children, ConjType::Equiv) => {
                 debug_assert_eq!(children.len(), 2);
                 let (lhs, rhs, it0) = self.get(children[0]).unwrap().as_impl().unwrap();
-                if cfg!(debug_assert) {
+                if cfg!(debug_assertions) {
                     let (lhs_rev, rhs_rev, it1) = self.get(children[1]).unwrap().as_impl().unwrap();
                     assert_eq!(lhs, rhs_rev);
                     assert_eq!(rhs, lhs_rev);

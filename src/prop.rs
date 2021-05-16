@@ -22,7 +22,7 @@ pub enum ConjType {
     Equiv,
 }
 
-static BOTTOM: Prop = Prop::Disj(vec![]);
+pub static BOTTOM: Prop = Prop::Disj(vec![]);
 
 impl Prop {
     pub fn eqtype(&self, other: &Self) -> bool {
