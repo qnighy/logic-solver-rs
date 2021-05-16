@@ -23,6 +23,12 @@ pub enum TokenKind {
     Eof,
 }
 
+const SIMPLE_SYMBOLS: &[&str] = &[
+    "→", "∧", "∨", "⊤", "⊥", /* up tack */
+    "⟂", /* perpendicular */
+    "¬", "⇔", "(", ")", "->", "/\\", "\\/", "~", "<=>",
+];
+
 #[derive(Debug)]
 struct Tokenizer<'a> {
     source: &'a str,
@@ -62,39 +68,37 @@ impl<'a> Tokenizer<'a> {
     }
 
     fn parse_token_kind(&mut self) -> Option<TokenKind> {
+        if let Some(sym) = SIMPLE_SYMBOLS.iter().copied().find(|sym| self.is_next(sym)) {
+            let kind = match sym {
+                "→" | "->" => TokenKind::Arrow,
+                "∧" | "/\\" => TokenKind::Conj,
+                "∨" | "\\/" => TokenKind::Disj,
+                "⊤" => TokenKind::Top,
+                "⊥" /* up tack */ |
+                "⟂" /* perpendicular */ => TokenKind::Bottom,
+                "¬" | "~" => TokenKind::Not,
+                "⇔" | "<=>" => TokenKind::Iff,
+                "(" => TokenKind::LParen,
+                ")" => TokenKind::RParen,
+                _ => unreachable!(),
+            };
+            self.bump_str(sym);
+            return Some(kind);
+        }
         let next = self.peek()?;
         if next.is_ascii_alphabetic() {
             let ident = self.parse_ident();
             Some(TokenKind::Ident(ident))
-        } else if next == '→' {
-            self.bump();
-            Some(TokenKind::Arrow)
-        } else if next == '∧' {
-            self.bump();
-            Some(TokenKind::Conj)
-        } else if next == '∨' {
-            self.bump();
-            Some(TokenKind::Disj)
-        } else if next == '⊤' {
-            self.bump();
-            Some(TokenKind::Top)
-        } else if next == '⊥' /* up tack */ || next == '⟂'
-        /* perpendicular */
-        {
-            self.bump();
-            Some(TokenKind::Bottom)
-        } else if next == '¬' {
-            self.bump();
-            Some(TokenKind::Not)
-        } else if next == '⇔' {
-            self.bump();
-            Some(TokenKind::Iff)
-        } else if next == '(' {
-            self.bump();
-            Some(TokenKind::LParen)
-        } else if next == ')' {
-            self.bump();
-            Some(TokenKind::RParen)
+        } else if next == '\\' {
+            let start = self.pos;
+            self.bump().unwrap();
+            if let Some(kind) = self.parse_after_backslash() {
+                Some(kind)
+            } else {
+                let end = self.pos;
+                let s = self.source[start.bytepos..end.bytepos].to_owned();
+                Some(TokenKind::Unknown(s))
+            }
         } else {
             let start = self.pos;
             self.bump().unwrap();
@@ -111,6 +115,20 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
+    fn parse_after_backslash(&mut self) -> Option<TokenKind> {
+        let next = self.peek()?;
+        if next.is_ascii_alphabetic() {
+            let ident = self.parse_ident();
+            let kind = match ident.as_str() {
+                "top" => TokenKind::Top,
+                "bot" => TokenKind::Bottom,
+                _ => return None,
+            };
+            return Some(kind);
+        }
+        None
+    }
+
     fn skip_spaces(&mut self) {
         while self
             .peek()
@@ -125,6 +143,10 @@ impl<'a> Tokenizer<'a> {
         self.source[self.pos.bytepos..].chars().next()
     }
 
+    fn is_next(&self, s: &str) -> bool {
+        self.source[self.pos.bytepos..].starts_with(s)
+    }
+
     fn bump(&mut self) -> Option<char> {
         let mut iter = self.source[self.pos.bytepos..].chars();
         let ret = iter.next();
@@ -136,6 +158,19 @@ impl<'a> Tokenizer<'a> {
             self.pos.column += 1;
         }
         ret
+    }
+
+    fn bump_str(&mut self, s: &str) {
+        debug_assert!(self.is_next(s));
+        self.pos.bytepos += s.len();
+        for c in s.chars() {
+            if c == '\n' {
+                self.pos.line += 1;
+                self.pos.column = 0;
+            } else {
+                self.pos.column += 1;
+            }
+        }
     }
 }
 
@@ -441,5 +476,71 @@ mod tests {
             line,
             column,
         }
+    }
+
+    #[test]
+    fn test_ascii_tokens1() {
+        use TokenKind::*;
+
+        let prop = tokenize("\\bot-><=>\\//\\~\\top");
+        assert_eq!(
+            prop,
+            vec![
+                Token {
+                    kind: Bottom,
+                    start: pos(0, 0, 0),
+                    end: pos(4, 0, 4),
+                },
+                Token {
+                    kind: Arrow,
+                    start: pos(4, 0, 4),
+                    end: pos(6, 0, 6),
+                },
+                Token {
+                    kind: Iff,
+                    start: pos(6, 0, 6),
+                    end: pos(9, 0, 9),
+                },
+                Token {
+                    kind: Disj,
+                    start: pos(9, 0, 9),
+                    end: pos(11, 0, 11),
+                },
+                Token {
+                    kind: Conj,
+                    start: pos(11, 0, 11),
+                    end: pos(13, 0, 13),
+                },
+                Token {
+                    kind: Not,
+                    start: pos(13, 0, 13),
+                    end: pos(14, 0, 14),
+                },
+                Token {
+                    kind: Top,
+                    start: pos(14, 0, 14),
+                    end: pos(18, 0, 18),
+                },
+                eof(18, 0, 18),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_ascii_tokens2() {
+        use TokenKind::*;
+
+        let prop = tokenize("\\botw");
+        assert_eq!(
+            prop,
+            vec![
+                Token {
+                    kind: Unknown(S("\\botw")),
+                    start: pos(0, 0, 0),
+                    end: pos(5, 0, 5),
+                },
+                eof(5, 0, 5),
+            ]
+        );
     }
 }
