@@ -1,7 +1,7 @@
 use std::fmt;
 
 use super::prop::write_prop_latex;
-use crate::visible_proof::{RuleName, VisibleProof, VisibleProofKind};
+use crate::visible_proof::{RuleName, VisibleProof, VisibleProofKind, VisibleProofNode};
 
 pub(super) fn nj_latex(pf: &VisibleProof) -> String {
     struct D<'a>(&'a VisibleProof);
@@ -26,12 +26,12 @@ pub(crate) fn write_nj_latex(pf: &VisibleProof, f: &mut fmt::Formatter) -> fmt::
     match pf.kind {
         VisibleProofKind::Axiom(ref hyp_id) => {
             f.write_str("\\AxiomC{$[")?;
-            write_prop_latex(&pf.prop, f)?;
+            write_node_latex(&pf.node, f)?;
             writeln!(f, "]_{{{}}}$}}", hyp_id.0)?;
         }
         VisibleProofKind::Open => {
             f.write_str("\\AxiomC{$")?;
-            write_prop_latex(&pf.prop, f)?;
+            write_node_latex(&pf.node, f)?;
             f.write_str("$}\n")?;
         }
         VisibleProofKind::SubProof {
@@ -58,7 +58,7 @@ pub(crate) fn write_nj_latex(pf: &VisibleProof, f: &mut fmt::Formatter) -> fmt::
                 f.write_str(cmd)?;
                 f.write_str("{$")?;
             }
-            write_prop_latex(&pf.prop, f)?;
+            write_node_latex(&pf.node, f)?;
             f.write_str("$}\n")?;
         }
         VisibleProofKind::SplitRef(split_proof_id) => {
@@ -67,11 +67,17 @@ pub(crate) fn write_nj_latex(pf: &VisibleProof, f: &mut fmt::Formatter) -> fmt::
             writeln!(f, "\\UnaryInfC{{$\\vdots$}}")?;
             writeln!(f, "\\noLine")?;
             f.write_str("\\UnaryInfC{$")?;
-            write_prop_latex(&pf.prop, f)?;
+            write_node_latex(&pf.node, f)?;
             f.write_str("$}\n")?;
         }
     }
     Ok(())
+}
+
+pub(crate) fn write_node_latex(node: &VisibleProofNode, f: &mut fmt::Formatter) -> fmt::Result {
+    match node {
+        VisibleProofNode::Prop(prop) => write_prop_latex(prop, f),
+    }
 }
 
 pub(crate) fn write_rule_latex(rule: RuleName, f: &mut fmt::Formatter) -> fmt::Result {

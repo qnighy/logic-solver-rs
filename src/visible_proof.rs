@@ -2,9 +2,14 @@ use crate::parsing::Prop as PropAst;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VisibleProof {
-    pub prop: PropAst,
+    pub node: VisibleProofNode,
     pub kind: VisibleProofKind,
     pub split_here: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum VisibleProofNode {
+    Prop(PropAst),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

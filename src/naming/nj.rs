@@ -2,7 +2,9 @@ use super::prop::promote_prop;
 use crate::debruijn::DbCtx;
 use crate::nj::{Proof, ProofKind};
 use crate::prop::Env;
-use crate::visible_proof::{HypothesisGen, HypothesisId, RuleName, VisibleProof, VisibleProofKind};
+use crate::visible_proof::{
+    HypothesisGen, HypothesisId, RuleName, VisibleProof, VisibleProofKind, VisibleProofNode,
+};
 
 pub fn promote_nj(pf: &Proof, env: &Env) -> VisibleProof {
     let mut ctx = DbCtx::new();
@@ -85,7 +87,7 @@ fn promote_nj_rec(
     };
     VisibleProof {
         kind,
-        prop: promote_prop(&pf.prop, env),
+        node: VisibleProofNode::Prop(promote_prop(&pf.prop, env)),
         split_here: false,
     }
 }
@@ -124,15 +126,15 @@ mod tests {
         assert_eq!(
             pf,
             VisibleProof {
-                prop: PropAst::Impl(
+                node: VisibleProofNode::Prop(PropAst::Impl(
                     Box::new(PropAst::Atom(S("A"))),
                     Box::new(PropAst::Atom(S("A")))
-                ),
+                )),
                 kind: VisibleProofKind::SubProof {
                     rule: RuleName::ImplIntro,
                     introduces: Some(HypothesisId(1)),
                     subproofs: vec![VisibleProof {
-                        prop: PropAst::Atom(S("A")),
+                        node: VisibleProofNode::Prop(PropAst::Atom(S("A"))),
                         kind: VisibleProofKind::Axiom(HypothesisId(1)),
                         split_here: false,
                     },],

@@ -1,9 +1,9 @@
 use crate::parsing::Prop as PropAst;
-use crate::visible_proof::{SplitProofId, VisibleProof, VisibleProofKind};
+use crate::visible_proof::{SplitProofId, VisibleProof, VisibleProofKind, VisibleProofNode};
 
 const LIMIT: u32 = 30;
 const SENTINEL: VisibleProof = VisibleProof {
-    prop: PropAst::Atom(String::new()),
+    node: VisibleProofNode::Prop(PropAst::Atom(String::new())),
     kind: VisibleProofKind::Open,
     split_here: false,
 };
@@ -20,12 +20,12 @@ pub(super) fn split_proof(pf: &VisibleProof) -> Vec<VisibleProof> {
 fn split_rec(pf: &mut VisibleProof, pfs: &mut Vec<VisibleProof>) {
     if pf.split_here {
         pf.split_here = false;
-        let prop = pf.prop.clone();
+        let node = pf.node.clone();
         let pf_id = SplitProofId(pfs.len());
         let mut pf = std::mem::replace(
             pf,
             VisibleProof {
-                prop,
+                node,
                 kind: VisibleProofKind::SplitRef(pf_id),
                 split_here: false,
             },
@@ -50,7 +50,7 @@ fn split_rec(pf: &mut VisibleProof, pfs: &mut Vec<VisibleProof>) {
 
 fn mark_split(pf: &mut VisibleProof) -> (u32, u32) {
     pf.split_here = false;
-    let self_weight = prop_weight(&pf.prop) + 1;
+    let self_weight = node_weight(&pf.node) + 1;
     let subproof_weight = match pf.kind {
         VisibleProofKind::Open | VisibleProofKind::Axiom(_) => 0,
         VisibleProofKind::SubProof { ref subproofs, .. } if subproofs.is_empty() => 0,
@@ -80,6 +80,12 @@ fn mark_split(pf: &mut VisibleProof) -> (u32, u32) {
         VisibleProofKind::SplitRef(_) => unreachable!("this tree is already split"),
     };
     (self_weight, std::cmp::max(self_weight, subproof_weight))
+}
+
+fn node_weight(node: &VisibleProofNode) -> u32 {
+    match node {
+        VisibleProofNode::Prop(prop) => prop_weight(prop),
+    }
 }
 
 fn prop_weight(prop: &PropAst) -> u32 {
