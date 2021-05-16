@@ -102,7 +102,10 @@ expression: "run(\"(A → B → A) ∧ (A ∨ B → B ∨ A)\")"
 
 $(A \to B \to A) \wedge (A \vee B \to B \vee A)$
 
-\section*{Proof}
+\section*{Proof (intuitionistic logic)}
+
+The proposition is provable in intuitionistic logic, thus provable too in classical one. Below is one such proof diagram.
+
 
 \begin{prooftree}
 \AxiomC{$[A]_{1}$}

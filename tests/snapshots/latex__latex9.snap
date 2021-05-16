@@ -102,7 +102,10 @@ expression: "run(\"(A ⇔ ¬A) → ⊥\")"
 
 $(A \Leftrightarrow \lnot A) \to \bot$
 
-\section*{Proof}
+\section*{Proof (intuitionistic logic)}
+
+The proposition is provable in intuitionistic logic, thus provable too in classical one. Below is one such proof diagram.
+
 
 \subsection*{Main proof}
 \begin{prooftree}

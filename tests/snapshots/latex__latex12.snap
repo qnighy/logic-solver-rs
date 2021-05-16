@@ -102,7 +102,10 @@ expression: "run(\"(A → B) ∨ (B → A)\")"
 
 $(A \to B) \vee (B \to A)$
 
-\section*{Proof}
+\section*{Proof (classical logic)}
+
+The proposition is provable in classical logic. Below is one such proof diagram.
+
 
 \begin{prooftree}
 \AxiomC{$[\lnot ((A \to B) \vee (B \to A))]_{1}$}
@@ -127,9 +130,11 @@ $(A \to B) \vee (B \to A)$
 \RightLabel{\scriptsize$\lnot\lnot_E$}
 \UnaryInfC{$(A \to B) \vee (B \to A)$}
 \end{prooftree}
-\section*{Refutation}
+\section*{Refutation (intuitionistic logic)}
 
-Refutation in Kripke model:
+The proposition isn't provable in intuitionistic logic.
+
+You can confirm non-provability via the following refutation in Kripke semantics.
 
 \begin{tikzpicture}[layered layout, level distance=2cm, sibling distance=2cm, nodes={{circle, draw}}, acc/.style={{decorate,decoration=snake}}]
 \node (w0) {$W_0$};

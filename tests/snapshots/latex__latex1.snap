@@ -102,9 +102,11 @@ expression: "run(\"A\")"
 
 $A$
 
-\section*{Refutation}
+\section*{Refutation (classical logic)}
 
-Refutation in boolean model:
+The proposition isn't provable in classical logic, thus neither in intuitionistic one.
+
+You can confirm non-provability via the following refutation in boolean semantics.
 
 \begin{tabular}{r|c}
 A & 0

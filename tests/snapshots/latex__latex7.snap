@@ -102,7 +102,10 @@ expression: "run(\"(A → A → B) → (B → B → C) → (C → C → D) → (
 
 $(A \to A \to B) \to (B \to B \to C) \to (C \to C \to D) \to (D \to D \to E) \to (E \to E \to F) \to A \to F$
 
-\section*{Proof}
+\section*{Proof (intuitionistic logic)}
+
+The proposition is provable in intuitionistic logic, thus provable too in classical one. Below is one such proof diagram.
+
 
 \subsection*{Main proof}
 \begin{prooftree}
