@@ -1,5 +1,6 @@
 use askama::Template;
 
+use self::branch_transformation::transform_branches;
 use self::kripke::{classical_assignment_latex, kripke_assignment_latex, kripke_frame_latex};
 use self::nj::nj_latex;
 use self::prop::prop_latex;
@@ -10,6 +11,7 @@ use crate::prop::Env;
 use crate::result::{SolverResult, SolverResultPair};
 use crate::visible_proof::VisibleProof;
 
+mod branch_transformation;
 mod kripke;
 mod nj;
 mod prop;
@@ -83,6 +85,8 @@ pub fn success_latex(prop: &PropAst, res: &SolverResultPair, env: &Env) -> Strin
 }
 
 fn proof_fragments(pf: &VisibleProof) -> Vec<ProofFragment> {
+    let mut pf = pf.clone();
+    transform_branches(&mut pf);
     split_proof(&pf)
         .into_iter()
         .enumerate()

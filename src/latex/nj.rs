@@ -42,12 +42,14 @@ pub(crate) fn write_nj_latex(pf: &VisibleProof, f: &mut fmt::Formatter) -> fmt::
             for subproof in subproofs {
                 write_nj_latex(subproof, f)?;
             }
-            f.write_str("\\RightLabel{\\scriptsize$")?;
-            write_rule_latex(rule, f)?;
-            if let Some(ref introduces) = *introduces {
-                write!(f, " ({})", introduces.0)?;
+            if !matches!(rule, RuleName::None) {
+                f.write_str("\\RightLabel{\\scriptsize$")?;
+                write_rule_latex(rule, f)?;
+                if let Some(ref introduces) = *introduces {
+                    write!(f, " ({})", introduces.0)?;
+                }
+                f.write_str("$}\n")?;
             }
-            f.write_str("$}\n")?;
             if subproofs.is_empty() {
                 f.write_str("\\AxiomC{}\n")?;
                 f.write_str("\\UnaryInfC{$")?;
@@ -77,11 +79,21 @@ pub(crate) fn write_nj_latex(pf: &VisibleProof, f: &mut fmt::Formatter) -> fmt::
 pub(crate) fn write_node_latex(node: &VisibleProofNode, f: &mut fmt::Formatter) -> fmt::Result {
     match node {
         VisibleProofNode::Prop(prop) => write_prop_latex(prop, f),
+        VisibleProofNode::BranchRange(range) => {
+            write!(
+                f,
+                "{{\\color{{gray}}({} \\cdots {})}}",
+                range.start + 1,
+                range.end
+            )?;
+            Ok(())
+        }
     }
 }
 
 pub(crate) fn write_rule_latex(rule: RuleName, f: &mut fmt::Formatter) -> fmt::Result {
     match rule {
+        RuleName::None => unreachable!(),
         RuleName::ImplIntro => f.write_str("{\\to}_I")?,
         RuleName::ImplElim => f.write_str("{\\to}_E")?,
         RuleName::ConjIntro(0) => f.write_str("{\\top}_I")?,

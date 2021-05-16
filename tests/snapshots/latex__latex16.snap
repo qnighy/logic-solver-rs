@@ -1,0 +1,125 @@
+---
+source: tests/latex.rs
+expression: "run(\"A -> A /\\\\ A /\\\\ A /\\\\ A /\\\\ A /\\\\ A\")"
+
+---
+\documentclass[a4paper,twoside=false,DIV=16]{scrartcl}
+\usepackage{bussproofs}
+\usepackage{colortbl}
+\usepackage{varwidth}
+\usepackage{pifont}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{xpatch}
+\usepackage{tikz}
+
+\usetikzlibrary{graphs}
+\usetikzlibrary{graphdrawing}
+\usetikzlibrary{decorations.pathmorphing}
+\usegdlibrary{layered}
+
+\newcommand{\cmark}{\textcolor{blue}{\ding{52}}}%
+\newcommand{\xmark}{\textcolor{red}{\ding{56}}}%
+
+\lstset{%
+  basicstyle={\small},%
+  identifierstyle={\small},%
+  commentstyle={\small\itshape},%
+  keywordstyle={\small\bfseries},%
+  ndkeywordstyle={\small},%
+  stringstyle={\small\ttfamily},
+  frame={tb},
+  breaklines=true,
+  columns=[l]{fullflexible},%
+  numbers=left,%
+  xrightmargin=0em,%
+  xleftmargin=3em,%
+  numberstyle={\scriptsize},%
+  stepnumber=1,
+  numbersep=1em,%
+  lineskip=-0.5ex%
+}
+
+\title{Logic solver result}
+
+\makeatletter
+% remove author, date, publishers
+\xpatchcmd{\@maketitle}
+  {%
+    {%
+      \usekomafont{author}{%
+        \lineskip .5em%
+        \begin{tabular}[t]{c}
+          \@author
+        \end{tabular}\par
+      }%
+    }%
+    \vskip 1em%
+    {\usekomafont{date}{\@date \par}}%
+    \vskip \z@ \@plus 1em
+    {\usekomafont{publishers}{\@publishers \par}}%
+  }
+  {}{}{\PatchFailed}
+\makeatother
+
+\begin{document}
+
+\maketitle
+
+
+\begin{center}
+\begin{tabular}{|c|c|}
+  \hline
+  \cellcolor[gray]{0.8}
+  \begin{minipage}{5cm}
+    \centering
+    Classical Logic
+  \end{minipage}
+  &
+  \cellcolor[gray]{0.8}
+  \begin{minipage}{5cm}
+    \centering
+    Intuitionistic Logic
+  \end{minipage}
+  \\\hline
+
+  {
+    \huge
+    \cmark
+    Provable
+  }
+  &
+  {
+    \huge
+    \cmark
+    Provable
+  }
+  \\\hline
+\end{tabular}
+\end{center}
+
+\section*{Input}
+
+$A \to A \wedge A \wedge A \wedge A \wedge A \wedge A$
+
+\section*{Proof (intuitionistic logic)}
+
+The proposition is provable in intuitionistic logic, thus provable too in classical one. Below is one such proof diagram.
+
+
+\begin{prooftree}
+\AxiomC{$[A]_{1}$}
+\AxiomC{$[A]_{1}$}
+\AxiomC{$[A]_{1}$}
+\TrinaryInfC{${\color{gray}(1 \cdots 3)}$}
+\AxiomC{$[A]_{1}$}
+\AxiomC{$[A]_{1}$}
+\AxiomC{$[A]_{1}$}
+\TrinaryInfC{${\color{gray}(4 \cdots 6)}$}
+\RightLabel{\scriptsize${\wedge}_I$}
+\BinaryInfC{$A \wedge A \wedge A \wedge A \wedge A \wedge A$}
+\RightLabel{\scriptsize${\to}_I (1)$}
+\UnaryInfC{$A \to A \wedge A \wedge A \wedge A \wedge A \wedge A$}
+\end{prooftree}
+
+\end{document}

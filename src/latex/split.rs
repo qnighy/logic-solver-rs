@@ -85,6 +85,7 @@ fn mark_split(pf: &mut VisibleProof) -> (u32, u32) {
 fn node_weight(node: &VisibleProofNode) -> u32 {
     match node {
         VisibleProofNode::Prop(prop) => prop_weight(prop),
+        VisibleProofNode::BranchRange(_) => 5,
     }
 }
 

@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 use crate::parsing::Prop as PropAst;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -10,6 +12,7 @@ pub struct VisibleProof {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VisibleProofNode {
     Prop(PropAst),
+    BranchRange(Range<usize>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -46,6 +49,7 @@ pub struct SplitProofId(pub usize);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RuleName {
+    None,
     ImplIntro,
     ImplElim,
     ConjIntro(usize),

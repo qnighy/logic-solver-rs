@@ -78,6 +78,11 @@ fn test_latex15() {
     assert_snapshot!(run("((A → B) → A) → A"));
 }
 
+#[test]
+fn test_latex16() {
+    assert_snapshot!(run("A -> A /\\ A /\\ A /\\ A /\\ A /\\ A"));
+}
+
 fn run(s: &str) -> String {
     let output = Command::new("cargo")
         .args(&["run", "--", "-e", s, "--latex"])
