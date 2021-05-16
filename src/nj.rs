@@ -204,6 +204,35 @@ impl Proof {
                     return true;
                 }
             }
+            ProofKind::DNegElim(ref mut sub) => {
+                if let ProofKind::Abs(ref body, _) = sub.kind {
+                    if body.has_call_with_constructor(Idx(0)) {
+                        match &self.prop {
+                            Prop::Impl(..) => {
+                                // Simplify DNE of (A -> B)
+                                let dn_proof = std::mem::replace(&mut **sub, SENTINEL);
+                                self.kind = ProofKind::AppS(
+                                    dne_replacement_impl(&self.prop, ImplType::Normal),
+                                    dn_proof,
+                                    ImplType::Normal,
+                                );
+                                return true;
+                            }
+                            Prop::Neg(..) => {
+                                // Simplify DNE of (~A)
+                                let dn_proof = std::mem::replace(&mut **sub, SENTINEL);
+                                self.kind = ProofKind::AppS(
+                                    dne_replacement_impl(&self.prop, ImplType::Neg),
+                                    dn_proof,
+                                    ImplType::Normal,
+                                );
+                                return true;
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+            }
             _ => {}
         }
         false
@@ -247,6 +276,35 @@ impl Proof {
             ProofKind::DNegElim(ref mut sub) => {
                 sub.subst(target, repl, by);
             }
+        }
+    }
+
+    pub fn has_call_with_constructor(&self, target: Idx) -> bool {
+        match &self.kind {
+            ProofKind::Var(_) => false,
+            ProofKind::Abs(body, _) => body.has_call_with_constructor(target.s()),
+            ProofKind::App(lhs, rhs, _) => {
+                if let ProofKind::Var(idx) = lhs.kind {
+                    if idx == target
+                        && matches!(rhs.kind, ProofKind::ConjIntro(..) | ProofKind::Abs(..))
+                    {
+                        return true;
+                    }
+                }
+                lhs.has_call_with_constructor(target) || rhs.has_call_with_constructor(target)
+            }
+            ProofKind::ConjIntro(children, _) => children
+                .iter()
+                .any(|child| child.has_call_with_constructor(target)),
+            ProofKind::ConjElim(sub, _, _, _) => sub.has_call_with_constructor(target),
+            ProofKind::DisjIntro(sub, _, _) => sub.has_call_with_constructor(target),
+            ProofKind::DisjElim(sub, branches) => {
+                sub.has_call_with_constructor(target)
+                    || branches
+                        .iter()
+                        .any(|branch| branch.has_call_with_constructor(target.s()))
+            }
+            ProofKind::DNegElim(sub) => sub.has_call_with_constructor(target),
         }
     }
 }
@@ -353,6 +411,75 @@ pub mod ProofKindShorthands {
     #[allow(non_snake_case)]
     pub fn DNegElimS(sub: Proof) -> ProofKind {
         ProofKind::DNegElimS(sub)
+    }
+}
+
+fn dne_replacement_impl(prop: &Prop, it: ImplType) -> Proof {
+    let (prop_lhs, prop_rhs) = match it {
+        ImplType::Normal => prop.as_impl().unwrap(),
+        ImplType::Neg => (prop.as_neg().unwrap(), &BOTTOM),
+    };
+    // fun body x => dne (fun y => body (fun z => y (z x)))
+    Proof {
+        prop: Prop::ImplS(Prop::NegS(Prop::NegS(prop.clone())), prop.clone()),
+        kind: ProofKind::AbsS(
+            Proof {
+                prop: prop.clone(),
+                kind: ProofKind::AbsS(
+                    Proof {
+                        prop: prop_rhs.clone(),
+                        kind: ProofKind::DNegElimS(Proof {
+                            prop: Prop::NegS(Prop::NegS(prop_rhs.clone())),
+                            kind: ProofKind::AbsS(
+                                Proof {
+                                    prop: Prop::Disj(vec![]),
+                                    kind: ProofKind::AppS(
+                                        Proof {
+                                            prop: Prop::NegS(Prop::NegS(prop.clone())),
+                                            kind: ProofKind::Var(Idx(2)),
+                                        },
+                                        Proof {
+                                            prop: Prop::NegS(prop.clone()),
+                                            kind: ProofKind::AbsS(
+                                                Proof {
+                                                    prop: Prop::Disj(vec![]),
+                                                    kind: ProofKind::AppS(
+                                                        Proof {
+                                                            prop: Prop::NegS(prop_rhs.clone()),
+                                                            kind: ProofKind::Var(Idx(1)),
+                                                        },
+                                                        Proof {
+                                                            prop: prop_rhs.clone(),
+                                                            kind: ProofKind::AppS(
+                                                                Proof {
+                                                                    prop: prop.clone(),
+                                                                    kind: ProofKind::Var(Idx(0)),
+                                                                },
+                                                                Proof {
+                                                                    prop: prop_lhs.clone(),
+                                                                    kind: ProofKind::Var(Idx(2)),
+                                                                },
+                                                                it,
+                                                            ),
+                                                        },
+                                                        ImplType::Neg,
+                                                    ),
+                                                },
+                                                ImplType::Neg,
+                                            ),
+                                        },
+                                        ImplType::Neg,
+                                    ),
+                                },
+                                ImplType::Neg,
+                            ),
+                        }),
+                    },
+                    it,
+                ),
+            },
+            ImplType::Normal,
+        ),
     }
 }
 
@@ -1439,6 +1566,200 @@ mod tests {
                 ImplType::Normal,
             ),
         };
+        assert_eq!(pf, expect_pf);
+    }
+
+    #[test]
+    fn test_reduce_all4() {
+        use ProofKindShorthands::*;
+        use PropShorthands::*;
+
+        let mut idgen = IdGen::new();
+        let id1 = idgen.fresh();
+        let id2 = idgen.fresh();
+        let mut pf = Proof {
+            prop: ImplS(
+                ImplS(Atom(id1), Atom(id2)),
+                Disj(vec![NegS(Atom(id1)), Atom(id2)]),
+            ),
+            kind: DNegElimS(Proof {
+                prop: NegS(NegS(ImplS(
+                    ImplS(Atom(id1), Atom(id2)),
+                    Disj(vec![NegS(Atom(id1)), Atom(id2)]),
+                ))),
+                kind: AbsS(
+                    Proof {
+                        prop: Disj(vec![]),
+                        kind: AppS(
+                            Proof {
+                                prop: NegS(ImplS(
+                                    ImplS(Atom(id1), Atom(id2)),
+                                    Disj(vec![NegS(Atom(id1)), Atom(id2)]),
+                                )),
+                                kind: Var(Idx(0)),
+                            },
+                            Proof {
+                                prop: ImplS(
+                                    ImplS(Atom(id1), Atom(id2)),
+                                    Disj(vec![NegS(Atom(id1)), Atom(id2)]),
+                                ),
+                                kind: AbsS(
+                                    Proof {
+                                        prop: Disj(vec![NegS(Atom(id1)), Atom(id2)]),
+                                        kind: DisjIntroS(
+                                            Proof {
+                                                prop: NegS(Atom(id1)),
+                                                kind: AbsS(
+                                                    Proof {
+                                                        prop: Disj(vec![]),
+                                                        kind: AppS(
+                                                            Proof {
+                                                                prop: NegS(ImplS(
+                                                                    ImplS(Atom(id1), Atom(id2)),
+                                                                    Disj(vec![
+                                                                        NegS(Atom(id1)),
+                                                                        Atom(id2),
+                                                                    ]),
+                                                                )),
+                                                                kind: Var(Idx(2)),
+                                                            },
+                                                            Proof {
+                                                                prop: ImplS(
+                                                                    ImplS(Atom(id1), Atom(id2)),
+                                                                    Disj(vec![
+                                                                        NegS(Atom(id1)),
+                                                                        Atom(id2),
+                                                                    ]),
+                                                                ),
+                                                                kind: AbsS(
+                                                                    Proof {
+                                                                        prop: Disj(vec![
+                                                                            NegS(Atom(id1)),
+                                                                            Atom(id2),
+                                                                        ]),
+                                                                        kind: DisjIntroS(
+                                                                            Proof {
+                                                                                prop: Atom(id2),
+                                                                                kind: AppS(Proof {
+                                                                                    prop: ImplS(Atom(id1), Atom(id2)),
+                                                                                    kind: Var(Idx(2))
+                                                                                }, Proof {
+                                                                                    prop: Atom(id1),
+                                                                                    kind: Var(Idx(1))
+                                                                                }, ImplType::Normal)
+                                                                            },
+                                                                            1,
+                                                                            2,
+                                                                        ),
+                                                                    },
+                                                                    ImplType::Normal,
+                                                                ),
+                                                            },
+                                                            ImplType::Neg,
+                                                        ),
+                                                    },
+                                                    ImplType::Neg,
+                                                ),
+                                            },
+                                            0,
+                                            2,
+                                        ),
+                                    },
+                                    ImplType::Normal,
+                                ),
+                            },
+                            ImplType::Neg,
+                        ),
+                    },
+                    ImplType::Neg,
+                ),
+            }),
+        };
+        pf.check_type();
+        pf.reduce_all();
+        pf.check_type();
+        let expect_pf = Proof {
+            prop: ImplS(
+                ImplS(Atom(id1), Atom(id2)),
+                Disj(vec![NegS(Atom(id1)), Atom(id2)]),
+            ),
+            kind: AbsS(
+                Proof {
+                    prop: Disj(vec![NegS(Atom(id1)), Atom(id2)]),
+                    kind: DNegElimS(Proof {
+                        prop: NegS(NegS(Disj(vec![NegS(Atom(id1)), Atom(id2)]))),
+                        kind: AbsS(
+                            Proof {
+                                prop: Disj(vec![]),
+                                kind: AppS(
+                                    Proof {
+                                        prop: NegS(Disj(vec![NegS(Atom(id1)), Atom(id2)])),
+                                        kind: Var(Idx(0)),
+                                    },
+                                    Proof {
+                                        prop: Disj(vec![NegS(Atom(id1)), Atom(id2)]),
+                                        kind: DisjIntroS(
+                                            Proof {
+                                                prop: NegS(Atom(id1)),
+                                                kind: AbsS(
+                                                    Proof {
+                                                        prop: Disj(vec![]),
+                                                        kind: AppS(
+                                                            Proof {
+                                                                prop: NegS(Disj(vec![
+                                                                    NegS(Atom(id1)),
+                                                                    Atom(id2),
+                                                                ])),
+                                                                kind: Var(Idx(1)),
+                                                            },
+                                                            Proof {
+                                                                prop: Disj(vec![
+                                                                    NegS(Atom(id1)),
+                                                                    Atom(id2),
+                                                                ]),
+                                                                kind: DisjIntroS(
+                                                                    Proof {
+                                                                        prop: Atom(id2),
+                                                                        kind: AppS(
+                                                                            Proof {
+                                                                                prop: ImplS(
+                                                                                    Atom(id1),
+                                                                                    Atom(id2),
+                                                                                ),
+                                                                                kind: Var(Idx(2)),
+                                                                            },
+                                                                            Proof {
+                                                                                prop: Atom(id1),
+                                                                                kind: Var(Idx(0)),
+                                                                            },
+                                                                            ImplType::Normal,
+                                                                        ),
+                                                                    },
+                                                                    1,
+                                                                    2,
+                                                                ),
+                                                            },
+                                                            ImplType::Neg,
+                                                        ),
+                                                    },
+                                                    ImplType::Neg,
+                                                ),
+                                            },
+                                            0,
+                                            2,
+                                        ),
+                                    },
+                                    ImplType::Neg,
+                                ),
+                            },
+                            ImplType::Neg,
+                        ),
+                    }),
+                },
+                ImplType::Normal,
+            ),
+        };
+        expect_pf.check_type();
         assert_eq!(pf, expect_pf);
     }
 }

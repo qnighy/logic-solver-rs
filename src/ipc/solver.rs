@@ -32,10 +32,15 @@ pub fn solve(prop: &Prop) -> Option<Proof> {
 pub fn solve_cpc(prop: &Prop) -> Option<Proof> {
     let prop_dn = Prop::NegS(Prop::NegS(prop.clone()));
     let proof_dn = solve(&prop_dn)?;
-    Some(Proof {
+    let mut proof = Proof {
         prop: prop.clone(),
         kind: ProofKind::DNegElimS(proof_dn),
-    })
+    };
+    proof.reduce_all();
+    if cfg!(debug_assertions) {
+        proof.check_has_type(prop);
+    }
+    Some(proof)
 }
 
 #[cfg(test)]

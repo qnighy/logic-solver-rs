@@ -1,6 +1,6 @@
 ---
 source: tests/latex.rs
-expression: "run(\"¬¬A → A\")"
+expression: "run(\"(A → B) → (¬A ∨ B)\")"
 
 ---
 \documentclass[a4paper,twoside=false,DIV=16]{scrartcl}
@@ -100,7 +100,7 @@ expression: "run(\"¬¬A → A\")"
 
 \section*{Input}
 
-$\lnot \lnot A \to A$
+$(A \to B) \to \lnot A \vee B$
 
 \section*{Proof (classical logic)}
 
@@ -108,26 +108,28 @@ The proposition is provable in classical logic. Below is one such proof diagram.
 
 
 \begin{prooftree}
-\AxiomC{$[\lnot A]_{2}$}
-\AxiomC{$[\lnot \lnot A]_{1}$}
-\AxiomC{$[\lnot A]_{2}$}
+\AxiomC{$[\lnot (\lnot A \vee B)]_{2}$}
+\AxiomC{$[\lnot (\lnot A \vee B)]_{2}$}
+\AxiomC{$[A \to B]_{1}$}
 \AxiomC{$[A]_{3}$}
+\RightLabel{\scriptsize${\to}_E$}
+\BinaryInfC{$B$}
+\RightLabel{\scriptsize${\vee}_{I 2}$}
+\UnaryInfC{$\lnot A \vee B$}
 \RightLabel{\scriptsize${\to}_E$}
 \BinaryInfC{$\bot$}
 \RightLabel{\scriptsize${\to}_I (3)$}
 \UnaryInfC{$\lnot A$}
-\RightLabel{\scriptsize${\to}_E$}
-\BinaryInfC{$\bot$}
-\RightLabel{\scriptsize${\bot}_E (4)$}
-\UnaryInfC{$A$}
+\RightLabel{\scriptsize${\vee}_{I 1}$}
+\UnaryInfC{$\lnot A \vee B$}
 \RightLabel{\scriptsize${\to}_E$}
 \BinaryInfC{$\bot$}
 \RightLabel{\scriptsize${\to}_I (2)$}
-\UnaryInfC{$\lnot \lnot A$}
+\UnaryInfC{$\lnot \lnot (\lnot A \vee B)$}
 \RightLabel{\scriptsize$\lnot\lnot_E$}
-\UnaryInfC{$A$}
+\UnaryInfC{$\lnot A \vee B$}
 \RightLabel{\scriptsize${\to}_I (1)$}
-\UnaryInfC{$\lnot \lnot A \to A$}
+\UnaryInfC{$(A \to B) \to \lnot A \vee B$}
 \end{prooftree}
 \section*{Refutation (intuitionistic logic)}
 
@@ -146,13 +148,17 @@ You can confirm non-provability via the following refutation in Kripke semantics
 \\\hline\hline
 A & 0 & 1
 \\
+B & 0 & 1
+\\
+A \to B & 1 & 1
+\\
 \bot & 0 & 0
 \\
 \lnot A & 0 & 0
 \\
-\lnot \lnot A & 1 & 1
+\lnot A \vee B & 0 & 1
 \\
-\lnot \lnot A \to A & 0 & 1
+(A \to B) \to \lnot A \vee B & 0 & 1
 \end{tabular}
 
 \end{document}
