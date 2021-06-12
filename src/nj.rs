@@ -1,15 +1,16 @@
+use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 
 use crate::debruijn::{DbCtx, Idx, Shift};
 use crate::prop::{ConjType, ImplType, Prop, BOTTOM};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Proof {
     pub prop: Prop,
     pub kind: ProofKind,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ProofKind {
     /// variable in de Bruijn index
     Var(Idx),

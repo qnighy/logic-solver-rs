@@ -1,5 +1,38 @@
+use serde::{Deserialize, Serialize};
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering::Relaxed;
+use std::sync::Arc;
+
 use crate::kripke::KripkeRefutation;
 use crate::nj::Proof;
+
+#[derive(Debug, Clone, Default)]
+pub struct Cancellation {
+    cancelled: Arc<AtomicBool>,
+}
+
+impl Cancellation {
+    pub fn new() -> Self {
+        Self {
+            cancelled: Arc::new(AtomicBool::new(false)),
+        }
+    }
+    pub fn is_cancelled(&self) -> bool {
+        self.cancelled.load(Relaxed)
+    }
+    pub fn cancel(&self) {
+        self.cancelled.store(true, Relaxed);
+    }
+}
+
+pub trait Reporter {
+    fn update(&mut self, res: SolverResult<Proof, KripkeRefutation>);
+}
+
+pub trait ReporterPair {
+    fn update_int(&mut self, res: SolverResult<Proof, KripkeRefutation>);
+    fn update_cl(&mut self, res: SolverResult<Proof, KripkeRefutation>);
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct SolverResultPair {
@@ -52,7 +85,7 @@ impl SolverResultPair {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Void {}
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SolverResult<P, R> {
     NotProvable(Option<R>),
     Unknown,

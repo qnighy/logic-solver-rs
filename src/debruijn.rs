@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 use crate::rollback::{Rollback, RollbackGuard};
 
 pub trait Shift: Clone {
@@ -9,7 +11,7 @@ pub trait Shift: Clone {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Idx(pub usize);
 
 impl Idx {

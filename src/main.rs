@@ -8,6 +8,7 @@ use crate::naming::lower_prop;
 use crate::parsing::{parse_prop, ParseError};
 use crate::prop::{Env, IdGen};
 use crate::result::{SolverResult, SolverResultPair};
+use crate::rpc::{rpc_server, InProcessCommander};
 
 pub mod debruijn;
 pub mod ipc;
@@ -19,6 +20,7 @@ pub mod parsing;
 pub mod prop;
 pub mod result;
 pub mod rollback;
+pub mod rpc;
 #[cfg(test)]
 mod tests;
 pub mod visible_proof;
@@ -40,6 +42,14 @@ struct Opt {
 
     #[structopt(long)]
     latex: bool,
+
+    #[structopt(subcommand)]
+    subcommand: Option<Subcommand>,
+}
+
+#[derive(StructOpt, Debug)]
+enum Subcommand {
+    InternalRpc,
 }
 
 fn main() {
@@ -52,6 +62,18 @@ fn main() {
 
 fn main2() -> Result<(), LogicSolverError> {
     let opt = Opt::from_args();
+    match &opt.subcommand {
+        Some(Subcommand::InternalRpc) => {
+            let commander = InProcessCommander;
+            let stdin = io::stdin();
+            let mut stdin = stdin.lock();
+            let stdout = io::stdout();
+            let mut stdout = stdout.lock();
+            rpc_server(&mut stdin, &mut stdout, &commander)?;
+            return Ok(());
+        }
+        None => {}
+    }
     let expr = if let Some(ref e) = opt.expr {
         e.clone()
     } else {

@@ -1,9 +1,10 @@
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 use crate::parsing::Prop as PropAst;
 use crate::prop::Prop;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct KripkeRefutation {
     pub num_worlds: usize,
     // accessibility[w0] = list of worlds reachable from w0
