@@ -29,7 +29,7 @@ pub(super) fn transform_branches(pf: &mut VisibleProof) {
                 max_total_branches *= MAX_BRANCHES;
             }
             if level > 0 {
-                let mut sp_copy = std::mem::replace(subproofs, Vec::new());
+                let mut sp_copy = std::mem::take(subproofs);
                 let range = 0..sp_copy.len();
                 let sp_new = split_rec(&mut sp_copy, level, max_total_branches, range);
                 *subproofs = sp_new;
