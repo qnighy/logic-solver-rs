@@ -11,7 +11,7 @@ license = "MIT OR Apache-2.0"
 bitvec = "0.22.3"
 clap = "2.33.3"
 structopt = "0.3.21"
-thiserror = "1.0.25"
+thiserror = "1.0.30"
 askama = "0.10.5"
 varisat = "0.2.2"
 serde = { version = "1.0.126", features = ["derive"] }
