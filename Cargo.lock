@@ -217,6 +217,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dd25036021b0de88a0aff6b850051563c6516d0bf53f8638938edbb9de732736"
 
 [[package]]
+name = "itoa"
+version = "1.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6c8af84674fe1f223a982c933a0ee1086ac4d4052aa0fb8060c12c6ad838e754"
+
+[[package]]
 name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -444,11 +450,11 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.66"
+version = "1.0.83"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "336b10da19a12ad094b59d870ebde26a45402e5b470add4b5fd03c5048a32127"
+checksum = "38dd04e3c8279e75b31ef29dbdceebfe5ad89f4d0937213c53f7d49d01b3d5a7"
 dependencies = [
- "itoa",
+ "itoa 1.0.3",
  "ryu",
  "serde",
 ]
@@ -621,7 +627,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ebe609851d1e9196674ac295f656bd8601200a1077343d22b345013497807caf"
 dependencies = [
  "anyhow",
- "itoa",
+ "itoa 0.4.7",
  "leb128",
  "log",
  "ordered-float",
@@ -661,7 +667,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3d1dee4e21be1f04c0a939f7ae710cced47233a578de08a1b3c7d50848402636"
 dependencies = [
  "anyhow",
- "itoa",
+ "itoa 0.4.7",
  "thiserror",
  "varisat-formula",
 ]
